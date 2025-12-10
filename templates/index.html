@@ -4,14 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Document</title>
+    <h1>Anime Liste</h1>
+    <style>
+        .container{
+            border: 1px solid black;
+            display: flex;
+            flex-direction: column;
+            width: 30%;
+            margin-bottom: 20px;
+
+
+        }
+        .container img{
+             width: 25%;
+         }
+        .section{
+             display: flex;
+             flex-wrap: wrap;
+         }
+    </style>
 </head>
 <body>
+
 <h1>{{ title }}</h1>
-<ul>
+<section class ="section">
     {% for anime in animes %}
-        <li>{{ anime["title"] }}</li>
+    <div class="container">
+        <p>{{ anime["title"] }}</p>
         <img src="{{ anime["images"]["jpg"]["image_url"] }}" alt="{{ anime["title"] }}">
+        </div>
     {% endfor %}
-</ul>
+    </section>
 </body>
 </html>
