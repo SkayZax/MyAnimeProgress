@@ -12,16 +12,20 @@
             flex-direction: column;
             width: 30%;
             margin-bottom: 20px;
-
-
+            border-radius: 5px;
+            margin-right: 20px;
         }
         .container img{
-             width: 25%;
+             width: 100%;
+            height: 300px;
          }
         .section{
              display: flex;
              flex-wrap: wrap;
          }
+        .container p{
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -30,8 +34,11 @@
 <section class ="section">
     {% for anime in animes %}
     <div class="container">
-        <p>{{ anime["title"] }}</p>
+        <h1>{{ anime["title"] }}</h1>
         <img src="{{ anime["images"]["jpg"]["image_url"] }}" alt="{{ anime["title"] }}">
+
+        <p> Genre: {{anime["genres"] | map(attribute="name") | join(", ")}}</p>
+
         </div>
     {% endfor %}
     </section>
