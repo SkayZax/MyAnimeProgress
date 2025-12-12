@@ -3,9 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Document</title>
-    <h1>Anime Liste</h1>
+    <title>MyAnimeProgress</title>
+
     <style>
+        html{
+            background-color: #141414;
+        }
+        header{
+            text-align: center;
+            color:white;
+        }
         .container{
             border: 1px solid black;
             display: flex;
@@ -14,11 +21,21 @@
             margin-bottom: 20px;
             border-radius: 5px;
             margin-right: 20px;
+            background-color: #222222;
+            overflow: hidden;
+            color: white;
+        }
+        .container hr{
+            border: 1px solid red;
+            width: 75%;
         }
         .container img{
              width: 100%;
-            height: 300px;
-         }
+            height: 320px;
+            object-fit: cover;
+         }.container h1{
+            text-align: center;
+                  }
         .section{
              display: flex;
              flex-wrap: wrap;
@@ -29,16 +46,21 @@
     </style>
 </head>
 <body>
+<header>
+<h1>MyAnimeProgress</h1>
+</header>
 
 <h1>{{ title }}</h1>
 <section class ="section">
     {% for anime in animes %}
     <div class="container">
-        <h1>{{ anime["title"] }}</h1>
         <img src="{{ anime["images"]["jpg"]["image_url"] }}" alt="{{ anime["title"] }}">
-
+        <h1>{{ anime["title"] }}</h1>
+        <hr>
         <p> Genre: {{anime["genres"] | map(attribute="name") | join(", ")}}</p>
+
         <p>age {{anime["rating"]}}</p>
+        <button href="">Detail</button>
 
         </div>
     {% endfor %}

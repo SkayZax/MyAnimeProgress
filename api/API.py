@@ -16,4 +16,6 @@ class API:
         return data.get("data",[])
 
     def images(self,anime_json: dict)->str:
-        return anime_json["images"]["jpg"]["image_url"]
+        return anime_json["images"]["jpg"]["large_image_url"]
+    def get_synopsis(self,anime_json: dict)-> str:
+        return anime_json["data"]["synopsis"]
