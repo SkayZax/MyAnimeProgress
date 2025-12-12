@@ -38,6 +38,7 @@
         <img src="{{ anime["images"]["jpg"]["image_url"] }}" alt="{{ anime["title"] }}">
 
         <p> Genre: {{anime["genres"] | map(attribute="name") | join(", ")}}</p>
+        <p>age {{anime["rating"]}}</p>
 
         </div>
     {% endfor %}
