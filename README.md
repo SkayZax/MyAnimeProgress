@@ -1,4 +1,4 @@
-Anime Tracker 📺
+MyAnimeProgress 📺
 Un site web pour suivre votre progression dans vos animés préférés.
 🎯 Objectif
 Créer un compte et noter à quel épisode vous êtes arrivé pour chaque animé.
