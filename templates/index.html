@@ -13,13 +13,16 @@
             text-align: center;
             color:white;
         }
+        header hr{
+            border: 1px solid #ff0000;
+        }
         .container{
             border: 1px solid black;
             display: flex;
             flex-direction: column;
             width: 30%;
             margin-bottom: 20px;
-            border-radius: 5px;
+            border-radius: 12px;
             margin-right: 20px;
             background-color: #222222;
             overflow: hidden;
@@ -29,8 +32,12 @@
             text-decoration: none;
             cursor: pointer;
         }
+        .container:hover{
+            border: 1px solid #ff0000;
+            box-shadow: 0 15px 40px #ff0000;
+        }
         .container hr{
-            border: 1px solid red;
+            border: 1px solid #ff0000;
             width: 75%;
         }
         .container img{
@@ -56,8 +63,8 @@
 </head>
 <body>
 <header>
-    {% include 'image.png' %}
     <h1>MyAnimeProgress</h1>
+    <hr>
 </header>
 
 <h1>{{ title }}</h1>
