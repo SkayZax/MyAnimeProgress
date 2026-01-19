@@ -19,3 +19,5 @@ class API:
         return anime_json["images"]["jpg"]["large_image_url"]
     def get_synopsis(self,anime_json: dict)-> str:
         return anime_json["data"]["synopsis"]
+    def get_anime_genres(self,anime_json: dict)->list:
+        return anime_json["data"]["genres"]

@@ -87,7 +87,7 @@
 </header>
 
 <h1>{{ title }}</h1>
-<section class ="section">
+<a href="{{ url_for('index', genres='Sports') }}" >Sports</a><section class ="section">
     {% for anime in animes %}
     <a href="#" class="container">
         <img src="{{ anime["images"]["jpg"]["image_url"] }}" alt="{{ anime["title"] }}">
