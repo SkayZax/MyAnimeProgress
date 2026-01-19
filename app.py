@@ -5,10 +5,11 @@ api=API()
 @app.route("/", methods=["GET"])
 def index():
     page = request.args.get('page', 1, type=int)
+    genres= request.args.get('genres', type=str)
 
     animes = api.get_animepage(page)
 
-    return render_template("index.html", animes=animes, current_page=page)
+    return render_template("index.html", animes=animes, current_page=page,)
 
 
 
