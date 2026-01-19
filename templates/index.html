@@ -59,6 +59,25 @@
             text-align: center;
             color: white;
         }
+        .pagination-container {
+    text-align: center;
+    margin: 20px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+}
+
+.btn-pagination {
+    background-color: #ff0000;
+    color: white;
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    transition: background-color 0.2s, transform 0.1s;
+    font-weight: bold;
+}
     </style>
 </head>
 <body>
@@ -80,7 +99,13 @@
     </a>
     {% endfor %}
     </section>
-<a href="">
-   <button>page suivante</button>
-</a></body>
+<div class="pagination-container">
+    {% if current_page > 1 %}
+    <a href="{{url_for('index', page=current_page - 1)}}" class="btn-pagination">Page Précédente</a>
+    {% endif %}
+
+    <span class="page-info"> Page {{ current_page }}</span>
+
+    <a href="{{url_for('index', page=current_page + 1)}}" class="btn-pagination">Page suivante</a>
+</div>
 </html>
