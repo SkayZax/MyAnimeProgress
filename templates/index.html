@@ -29,7 +29,7 @@
             overflow: hidden;
             color: white;
             gap: 10px;
-            margin-left: 2%;
+            margin-left: 5%;
             text-decoration: none;
             cursor: pointer;
         }
@@ -106,17 +106,20 @@ header form{
 </header>
 
 <h1>{{ title }}</h1>
+><section class ="section">
     {% for anime in animes %}
     <a href="#" class="container">
         <img src="{{ anime["images"]["jpg"]["image_url"] }}" alt="{{ anime["title"] }}">
         <h1>{{ anime["title"] }}</h1>
-        <hr>
         <p> Genre: {{anime["genres"] | map(attribute="name") | join(", ")}}</p>
+
 
         <p>age {{anime["rating"]}}</p>
     </a>
     {% endfor %}
+    </section>
     </body>
+
 <div class="pagination-container">
     {% if current_page > 1 %}
     <a href="{{url_for('index', page=current_page - 1)}}" class="btn-pagination">Page Précédente</a>
