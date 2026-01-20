@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>MyAnimeProgress</title>
 
+
     <style>
         html{
             background-color: #141414;
@@ -78,16 +79,33 @@
     transition: background-color 0.2s, transform 0.1s;
     font-weight: bold;
 }
+.page-info {
+    color: white;
+}
+header form{
+    display: flex;
+    justify-content: right;
+}
     </style>
 </head>
 <body>
 <header>
     <h1>MyAnimeProgress</h1>
+
+    <form action="{{ url_for('index') }}" method="get" style="text-align: center; margin: 20px;">
+    <select name="genres" class="genre-select">
+        <option value="">Tout afficher</option>
+        <option value="Sports" {% if request.args.get('genres') == 'Sports' %}selected{% endif %}>Sports</option>
+        <option value="Action">Action</option>
+    </select>
+    <button type="submit" class="btn-pagination">Filtrer</button>
+</form>
     <hr>
+
+
 </header>
 
 <h1>{{ title }}</h1>
-<a href="{{ url_for('index', genres='Sports') }}" >Sports</a><section class ="section">
     {% for anime in animes %}
     <a href="#" class="container">
         <img src="{{ anime["images"]["jpg"]["image_url"] }}" alt="{{ anime["title"] }}">
@@ -98,7 +116,7 @@
         <p>age {{anime["rating"]}}</p>
     </a>
     {% endfor %}
-    </section>
+    </body>
 <div class="pagination-container">
     {% if current_page > 1 %}
     <a href="{{url_for('index', page=current_page - 1)}}" class="btn-pagination">Page Précédente</a>

@@ -21,3 +21,13 @@ class API:
         return anime_json["data"]["synopsis"]
     def get_anime_genres(self,anime_json: dict)->list:
         return anime_json["data"]["genres"]
+
+    def get_animes_by_genre(self, genre_id: int, page: int = 1) -> list:
+
+        params = {
+            "genres": genre_id,
+            "page": page
+        }
+        result = requests.get(self.url_api, params=params)
+        data = result.json()
+        return data.get("data", [])
