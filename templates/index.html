@@ -122,11 +122,11 @@ header form{
 
 <div class="pagination-container">
     {% if current_page > 1 %}
-    <a href="{{url_for('index', page=current_page - 1)}}" class="btn-pagination">Page Précédente</a>
+    <a href="{{url_for('index', page=current_page - 1, genres=request.args.get('genres'))}}" class="btn-pagination">Page Précédente</a>
     {% endif %}
 
     <span class="page-info"> Page {{ current_page }}</span>
 
-    <a href="{{url_for('index', page=current_page + 1)}}" class="btn-pagination">Page suivante</a>
+    <a href="{{url_for('index', page=current_page + 1, genres=request.args.get('genres'))}}" class="btn-pagination">Page suivante</a>
 </div>
 </html>
