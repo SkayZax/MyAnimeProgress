@@ -1,7 +1,7 @@
 import requests
 class API:
     def __init__(self):
-        self.url_api = "https://api.jikan.moe/v4/anime/"
+        self.url_api = "https://api.jikan.moe/v4/anime"
 
     def get_animes(self,anime_id: int)->dict:
         result=requests.get(self.url_api+str(anime_id))
