@@ -9,13 +9,11 @@ def index():
     title=""
     animes = api.get_animepage(page)
     if genre_name=='Sports':
-        animes=api.get_animes_by_genre(genre_id=30,page=page)
+        animes=api.get_animes_by_genre(genre_id=30, page=page)
+    elif genre_name == 'Action':
+        animes = api.get_animes_by_genre(genre_id=1, page=page)
     else:
-        animes=api.get_animepage(page)
-        if genre_name == 'Action':
-            animes = api.get_animes_by_genre(genre_id=1, page=page)
-        else:
-            animes = api.get_animepage(page)
+        animes = api.get_animepage(page)
 
     return render_template("index.html", animes=animes, current_page=page,)
 
