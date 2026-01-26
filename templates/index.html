@@ -5,18 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>MyAnimeProgress</title>
 
-
     <style>
         html{
             background-color: #141414;
         }
-        header{
-            text-align: center;
-            color:white;
+        head{
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
         }
+        header{
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            color: white;
+}
+
+        header h1{
+            grid-column: 2;
+            justify-self: center;
+            margin: 0;
+            color: white;
+}
+
         header hr{
             border: 1px solid #ff0000;
         }
+        header form{
+            grid-column: 1;
+            justify-self: start;
+            margin: 0;
+            display: flex;
+            align-items: center;
+}
         .container{
             border: 1px solid black;
             display: flex;
@@ -88,10 +110,18 @@ header form{
 
 }
 .utilisateur{
-    display: flex;
-    justify-content: center;
-    width: 5%;
-}
+    grid-column: 3;
+    justify-self: end;
+} .utilisateur img{
+      width: 40px;
+      border-radius: 8px;
+      border : 1px solid #ff0000;
+
+
+ }
+  .utilisateur a{
+      text-decoration: none;
+   }
     </style>
 </head>
 <body>
@@ -107,7 +137,9 @@ header form{
     <button type="submit" class="btn-pagination">Filtrer</button>
 </form>
     <div class="utilisateur">
+        <a href="#">
     <img src="{{ url_for('static', filename='utilisateur.png') }}" alt="logo">
+            </a>
     </div>
     <hr>
 
