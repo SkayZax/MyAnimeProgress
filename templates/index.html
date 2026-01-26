@@ -85,6 +85,12 @@
 header form{
     display: flex;
     justify-content: right;
+
+}
+.utilisateur{
+    display: flex;
+    justify-content: center;
+    width: 5%;
 }
     </style>
 </head>
@@ -100,7 +106,9 @@ header form{
     </select>
     <button type="submit" class="btn-pagination">Filtrer</button>
 </form>
-    <img src="../utilisateur.png" alt="logo">
+    <div class="utilisateur">
+    <img src="{{ url_for('static', filename='utilisateur.png') }}" alt="logo">
+    </div>
     <hr>
 
 
