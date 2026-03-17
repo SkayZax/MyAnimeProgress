@@ -15,11 +15,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db' # Crée un fichi
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
-with app.app_context():
-    if not os.path.exists('instance/database.db'):
-        db.create_all()
-        print("Base de données créée avec succès !")
-# Initialise la DB avec l'app
 
 # Gestion de la connexion
 login_manager = LoginManager()
@@ -175,4 +170,8 @@ def register():
     return render_template('register.html')
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    with app.app_context():
+        # Crée les tables si elles n'existent pas
+        db.create_all()
+        print("Base de données initialisée !")
+        app.run(debug=True)
