@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Connexion - MyAnimeProgress</title>
+    <style>
+        html {
+            background-color: #141414;
+            font-family: sans-serif;
+        }
+        body {
+            margin: 0;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        header {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            color: white;
+        }
+        header h1 {
+            grid-column: 2;
+            justify-self: center;
+            margin: 0;
+            color: white;
+        }
+        header hr {
+            border: 1px solid #ff0000;
+        }
+        
+        .main-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-grow: 1;
+            padding: 20px;
+        }
+        
+        .login-container {
+            background-color: #222222;
+            padding: 40px;
+            border-radius: 12px;
+            border: 1px solid black;
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            color: white;
+        }
+        
+        .login-container:hover {
+            border: 1px solid #ff0000;
+            box-shadow: 0 15px 40px #ff0000;
+        }
+
+        .login-container h2 {
+            text-align: center;
+            margin: 0;
+            color: white;
+            font-size: 1.5em;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            color: #ccc;
+            font-size: 0.9em;
+        }
+
+        input {
+            padding: 12px;
+            border-radius: 5px;
+            border: 1px solid #333;
+            background-color: #333;
+            color: white;
+            font-size: 1em;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #ff0000;
+        }
+
+        .btn-login {
+            background-color: #ff0000;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1em;
+            transition: background-color 0.2s, transform 0.1s;
+            margin-top: 10px;
+        }
+        
+        .btn-login:hover {
+            background-color: #cc0000;
+        }
+        
+        .links {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .links a {
+            color: white;
+            text-decoration: none;
+            font-size: 0.9em;
+            transition: color 0.2s;
+        }
+        
+        .links a:hover {
+            color: #ff0000;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>MyAnimeProgress</h1>
+    </header>
+    <hr style="border: 1px solid #ff0000; width: 100%; margin: 0;">
+
+    <div class="main-content">
+        <form action="/login" method="post" class="login-container">
+            <h2>Connexion</h2>
+            
+            <div class="form-group">
+                <label for="username">Nom d'utilisateur</label>
+                <input type="text" id="username" name="username" required placeholder="Entrez votre nom d'utilisateur">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Mot de passe</label>
+                <input type="password" id="password" name="password" required placeholder="Entrez votre mot de passe">
+            </div>
+
+            <button type="submit" class="btn-login">Se connecter</button>
+            
+            <div class="links">
+                <a href="#">Mot de passe oublié ?</a>
+                <a href="#">Pas encore de compte ? S'inscrire</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

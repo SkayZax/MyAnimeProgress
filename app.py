@@ -1,7 +1,12 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for
 from api.API import API
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin, login_user
+from werkzeug.security import generate_password_hash, check_password_hash
+
 app=Flask(__name__)
 api=API()
+db = SQLAlchemy()
 @app.route("/", methods=["GET"])
 def index():
     page = request.args.get('page', 1, type=int)
@@ -102,9 +107,42 @@ def index():
 
     return render_template("index.html", animes=animes, current_page=page,)
 
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(150), unique=True, nullable=False)
+    username = db.Column(db.String(150), unique=True, nullable=False)
+    password = db.Column(db.String(150), nullable=False)
 
 
+@app.route('/login', methods=['POST'])
+def login():
+    email = request.form.get('email')  # On récupère l'email
+    password = request.form.get('password')
 
+    # On cherche l'utilisateur par son email
+    user = User.query.filter_by(email=email).first()
+
+    if user and check_password_hash(user.password, password):
+        login_user(user)
+        return f"Content de vous revoir, {user.username} !"
+
+    return "Email ou mot de passe incorrect."
+@app.route("/regsiter",methods=["POST"])
+def register():
+    username = request.form.get("username")
+    email = request.form.get("email")
+    password = request.form.get("password")
+    user_exists = User.query.filter_by(email=email).first()
+    if user_exists:
+        return "Cet email est déjà utilisé."
+
+    hashed_pw = generate_password_hash(password, method='sha256')
+
+    new_user = User(email=email, username=username, password=hashed_pw)
+    db.session.add(new_user)
+    db.session.commit()
+
+    return "Compte créé avec succès !"
 
 if __name__ == "__main__":
     app.run(debug=True)
