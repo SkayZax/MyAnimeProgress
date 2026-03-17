@@ -1,12 +1,33 @@
 from flask import Flask, render_template, request, redirect, url_for
+from werkzeug.security import check_password_hash, generate_password_hash
+
 from api.API import API
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin, login_user
-from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import UserMixin, login_user, LoginManager # Ajout de LoginManager
+import os
 
-app=Flask(__name__)
-api=API()
-db = SQLAlchemy()
+app = Flask(__name__)
+api = API()
+
+# CONFIGURATION INDISPENSABLE
+app.config['SECRET_KEY'] = 'ma_cle_secrete_tres_longue' # Change ceci par une phrase complexe
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db' # Crée un fichier database.db
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+with app.app_context():
+    if not os.path.exists('instance/database.db'):
+        db.create_all()
+        print("Base de données créée avec succès !")
+# Initialise la DB avec l'app
+
+# Gestion de la connexion
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 @app.route("/", methods=["GET"])
 def index():
     page = request.args.get('page', 1, type=int)
@@ -114,35 +135,44 @@ class User(UserMixin, db.Model):
     password = db.Column(db.String(150), nullable=False)
 
 
-@app.route('/login', methods=['POST'])
+@app.route('/login', methods=['GET', 'POST'])  # On ajoute GET ici
 def login():
-    email = request.form.get('email')  # On récupère l'email
-    password = request.form.get('password')
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
 
-    # On cherche l'utilisateur par son email
-    user = User.query.filter_by(email=email).first()
+        user = User.query.filter_by(email=email).first()
+        if user and check_password_hash(user.password, password):
+            login_user(user)
+            return redirect(url_for('index'))  # Redirige vers l'accueil après connexion
 
-    if user and check_password_hash(user.password, password):
-        login_user(user)
-        return f"Content de vous revoir, {user.username} !"
+        return "Email ou mot de passe incorrect."
 
-    return "Email ou mot de passe incorrect."
-@app.route("/regsiter",methods=["POST"])
+    # Si c'est un GET, on affiche simplement le formulaire
+    return render_template('login.html')
+
+
+@app.route("/register", methods=["GET", "POST"])  # Correction de l'orthographe + ajout de GET
 def register():
-    username = request.form.get("username")
-    email = request.form.get("email")
-    password = request.form.get("password")
-    user_exists = User.query.filter_by(email=email).first()
-    if user_exists:
-        return "Cet email est déjà utilisé."
+    if request.method == "POST":
+        username = request.form.get("username")
+        email = request.form.get("email")
+        password = request.form.get("password")
 
-    hashed_pw = generate_password_hash(password, method='sha256')
+        user_exists = User.query.filter_by(email=email).first()
+        if user_exists:
+            return "Cet email est déjà utilisé."
 
-    new_user = User(email=email, username=username, password=hashed_pw)
-    db.session.add(new_user)
-    db.session.commit()
+        # Utilise pbkdf2:sha256 pour plus de compatibilité
+        hashed_pw = generate_password_hash(password, method='pbkdf2:sha256')
 
-    return "Compte créé avec succès !"
+        new_user = User(email=email, username=username, password=hashed_pw)
+        db.session.add(new_user)
+        db.session.commit()
+
+        return redirect(url_for('login'))  # Redirige vers la page de login après succès
+
+    return render_template('register.html')
 
 if __name__ == "__main__":
     app.run(debug=True)
