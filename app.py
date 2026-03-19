@@ -3,7 +3,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from api.API import API
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin, login_user, LoginManager # Ajout de LoginManager
+from flask_login import UserMixin, login_user, LoginManager, login_required  # Ajout de LoginManager
 import os
 
 app = Flask(__name__)
@@ -147,27 +147,38 @@ def login():
     return render_template('login.html')
 
 
-@app.route("/register", methods=["GET", "POST"])  # Correction de l'orthographe + ajout de GET
+@app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
         username = request.form.get("username")
         email = request.form.get("email")
         password = request.form.get("password")
 
-        user_exists = User.query.filter_by(email=email).first()
-        if user_exists:
+        # 1. Vérifier si l'email existe déjà
+        email_exists = User.query.filter_by(email=email).first()
+        if email_exists:
             return "Cet email est déjà utilisé."
 
-        # Utilise pbkdf2:sha256 pour plus de compatibilité
+        # 2. Vérifier si le nom d'utilisateur existe déjà (AJOUT ICI)
+        username_exists = User.query.filter_by(username=username).first()
+        if username_exists:
+            return "Ce nom d'utilisateur est déjà pris. Veuillez en choisir un autre."
+
+        # Hachage du mot de passe
         hashed_pw = generate_password_hash(password, method='pbkdf2:sha256')
 
+        # Création et enregistrement du nouvel utilisateur
         new_user = User(email=email, username=username, password=hashed_pw)
         db.session.add(new_user)
         db.session.commit()
 
-        return redirect(url_for('login'))  # Redirige vers la page de login après succès
+        return redirect(url_for('login'))
 
     return render_template('register.html')
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    return render_template("dashboard.html")
 
 if __name__ == "__main__":
     with app.app_context():
