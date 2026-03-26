@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ anime['title'] }} - MyAnimeProgress</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        body { background-color: #141414; color: white; font-family: sans-serif; padding: 50px; }
+        .detail-container { display: flex; gap: 40px; max-width: 1000px; margin: auto; background: #222; padding: 30px; border-radius: 15px; border: 1px solid #ff0000; }
+        img { border-radius: 10px; width: 300px; }
+        .info h1 { color: #ff0000; margin-top: 0; }
+        .synopsis { line-height: 1.6; color: #ccc; }
+        .btn-back { display: inline-block; margin-bottom: 20px; color: white; text-decoration: none; border: 1px solid #ff0000; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <a href="{{ url_for('index') }}" class="btn-back">← Retour à l'accueil</a>
+
+    <div class="detail-container">
+        <img src="{{ anime['images']['jpg']['large_image_url'] }}" alt="{{ anime['title'] }}">
+        <div class="info">
+            <h1>{{ anime['title'] }}</h1>
+            <p><strong>Score :</strong> ⭐ {{ anime['score'] }}</p>
+            <p><strong>Épisodes :</strong> {{ anime['episodes'] }}</p>
+            <p><strong>Statut :</strong> {{ anime['status'] }}</p>
+            <div class="synopsis">
+                <h3>Synopsis</h3>
+                <p>{{ anime['synopsis'] }}</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

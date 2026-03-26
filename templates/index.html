@@ -186,18 +186,16 @@
 </header>
 
 <h1>{{ title }}</h1>
-><section class ="section">
+<section class="section">
     {% for anime in animes %}
-    <a href="#" class="container">
-        <img src="{{ anime["images"]["jpg"]["image_url"] }}" alt="{{ anime["title"] }}">
-        <h1>{{ anime["title"] }}</h1>
-        <p> Genre: {{anime["genres"] | map(attribute="name") | join(", ")}}</p>
-
-
-        <p>age {{anime["rating"]}}</p>
+    <a href="{{ url_for('detail_anime', mal_id=anime['mal_id']) }}" class="container">
+        <img src="{{ anime['images']['jpg']['image_url'] }}" alt="{{ anime['title'] }}">
+        <h1>{{ anime['title'] }}</h1>
+        <p> Genre: {{ anime['genres'] | map(attribute='name') | join(', ') }}</p>
+        <p>Age: {{ anime['rating'] }}</p>
     </a>
     {% endfor %}
-    </section>
+</section>
     </body>
 
 <div class="pagination-container">

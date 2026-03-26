@@ -1,3 +1,4 @@
+from deep_translator import GoogleTranslator
 from flask import Flask, render_template, request, redirect, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -139,7 +140,7 @@ def login():
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, password):
             login_user(user)
-            return redirect(url_for('index'))  # Redirige vers l'accueil après connexion
+            return redirect(url_for('dashboard'))  # Redirige vers l'accueil après connexion
 
         return "Email ou mot de passe incorrect."
 
@@ -179,6 +180,23 @@ def register():
 @login_required
 def dashboard():
     return render_template("dashboard.html")
+
+
+from deep_translator import GoogleTranslator
+
+
+# Dans ta route de détail :
+@app.route("/anime/<int:mal_id>")
+def detail_anime(mal_id):
+    anime_data = api.get_animes(mal_id)
+    anime = anime_data.get("data", {})
+
+    # Traduction du synopsis s'il existe
+    if anime.get("synopsis"):
+        traduction = GoogleTranslator(source='en', target='fr').translate(anime["synopsis"])
+        anime["synopsis"] = traduction
+
+    return render_template("details.html", anime=anime)
 
 if __name__ == "__main__":
     with app.app_context():

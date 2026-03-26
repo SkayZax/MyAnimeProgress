@@ -3,9 +3,9 @@ class API:
     def __init__(self):
         self.url_api = "https://api.jikan.moe/v4/anime"
 
-    def get_animes(self,anime_id: int)->dict:
-        result=requests.get(self.url_api+str(anime_id))
-        return  result.json()
+    def get_animes(self, anime_id: int) -> dict:
+        result = requests.get(f"{self.url_api}/{anime_id}")
+        return result.json()
 
     def gettitlefromjson(self,anime_json: dict) -> str:
         return anime_json["data"]["title"]
