@@ -130,8 +130,14 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
 
+class User_anime(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    anime_id = db.Column(db.Integer, nullable=False)
+    current_episode = db.Column(db.Integer, default=0)
+    total_episode = db.Column(db.Integer, nullable=False)
 
-@app.route('/login', methods=['GET', 'POST'])  # On ajoute GET ici
+@app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         email = request.form.get('email')
@@ -140,8 +146,7 @@ def login():
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, password):
             login_user(user)
-            return redirect(url_for('dashboard'))  # Redirige vers l'accueil après connexion
-
+            return redirect(url_for('dashboard'))
         return "Email ou mot de passe incorrect."
 
     # Si c'est un GET, on affiche simplement le formulaire
