@@ -31,3 +31,6 @@ class API:
         result = requests.get(self.url_api, params=params)
         data = result.json()
         return data.get("data", [])
+    def get_relation(self, anime_id: int) -> dict:
+        result = requests.get(f"{self.url_api}/{anime_id}/relations")
+        return result.json()
