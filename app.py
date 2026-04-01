@@ -9,7 +9,6 @@ import os
 
 app = Flask(__name__)
 api = API()
-
 # CONFIGURATION INDISPENSABLE
 app.config['SECRET_KEY'] = 'ma_cle_secrete_tres_longue' # Change ceci par une phrase complexe
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db' # Crée un fichier database.db
@@ -20,6 +19,7 @@ db = SQLAlchemy(app)
 # Gestion de la connexion
 login_manager = LoginManager()
 login_manager.init_app(app)
+login_manager.login_view = 'login'
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -135,7 +135,7 @@ class Useranime(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     anime_id = db.Column(db.Integer, nullable=False)
     current_episode = db.Column(db.Integer, default=0)
-    total_episode = db.Column(db.Integer, nullable=False)
+    total_episode = db.Column(db.Integer, nullable=True)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -202,6 +202,54 @@ def detail_anime(mal_id):
         anime["synopsis"] = traduction
 
     return render_template("details.html", anime=anime)
+
+
+@app.route("/anime/<int:anime_id>")
+def details(anime_id):
+    anime_data = api.get_animes(anime_id)
+
+    relations = api.get_relations(anime_id)
+
+    # 3. Filtrer pour ne garder que les Sequel (suites) et Prequel (précédents)
+    seasons = []
+    for rel in relations.get('data', []):
+        if rel['relation'] in ['Sequel', 'Prequel']:
+            for entry in rel['entry']:
+                seasons.append(entry)
+
+    return render_template("details.html", anime=anime_data['data'], seasons=seasons)
+@app.route("/add_to_list", methods=["POST"])
+@login_required
+def add_to_list():
+    # 1. Récupérer les infos envoyées par le formulaire
+    anime_id = request.form.get("anime_id")
+    current_ep = request.form.get("current_episode")
+    total_ep = request.form.get("total_episode")
+
+    # 2. Vérifier si cet animé est déjà dans la liste de l'utilisateur
+    existing_entry = Useranime.query.filter_by(
+        user_id=current_user.id,
+        anime_id=anime_id
+    ).first()
+
+    if existing_entry:
+        # Si oui, on met juste à jour l'épisode
+        existing_entry.current_episode = current_ep
+    else:
+        # Si non, on crée une nouvelle ligne
+        new_progress = Useranime(
+            user_id=current_user.id,
+            anime_id=anime_id,
+            current_episode=current_ep,
+            total_episode=total_ep
+        )
+        db.session.add(new_progress)
+
+    # 3. Sauvegarder dans la base de données
+    db.session.commit()
+
+    # 4. Rediriger vers le dashboard pour voir le résultat
+    return redirect(url_for('dashboard'))
 
 if __name__ == "__main__":
     with app.app_context():
