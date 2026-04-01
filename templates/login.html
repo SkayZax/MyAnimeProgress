@@ -126,7 +126,17 @@
         
         .links a:hover {
             color: #ff0000;
-        }
+        }.error-message {
+    background-color: #ff4d4d;
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 0.9em;
+    border: 1px solid black;
+}
+
     </style>
 </head>
 <body>
@@ -138,6 +148,13 @@
     <div class="main-content">
         <form action="/login" method="post" class="login-container">
             <h2>Connexion</h2>
+            {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}
+          <div class="error-message">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
             
             <div class="form-group">
     <label for="email">Adresse Email</label>

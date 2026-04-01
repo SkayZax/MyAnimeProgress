@@ -116,53 +116,42 @@
         <div class="stats-container">
             <div class="stat-card">
                 <h3>Animés en cours</h3>
-                <p>12</p>
+                <p>{{nbr_anime}}</p>
             </div>
             <div class="stat-card">
                 <h3>Épisodes visionnés</h3>
-                <p>248</p>
+                <p>{{total_vu}}</p>
             </div>
             <div class="stat-card">
                 <h3>Temps passé</h3>
-                <p>4.2j</p>
+                <p>{{total_vu}}</p>
             </div>
         </div>
 
         <h2 style="margin-bottom: 20px;">Ma Progression</h2>
+            <div class="anime-grid">
+    {% for anime in animes %}
+    <a href="{{ url_for('detail_anime', mal_id=anime['mal_id']) }}" class="anime-card">
+        <img src="{{ anime.image }}" alt="{{ anime.title }}">
+        <div class="anime-info">
+            <h3>{{ anime.title }}</h3>
+            <p>Épisode : {{ anime.current_episode }} / {{ anime.total_episode or '?' }}</p>
 
-        <div class="anime-grid">
-            <div class="anime-card">
-                <img src="https://via.placeholder.com/300x200" alt="Anime Title">
-                <div class="anime-info">
-                    <h4>One Piece</h4>
-                    <div class="progress-container">
-                        <div class="progress-text">
-                            <span>Épisode 1050 / 1100</span>
-                            <span>95%</span>
-                        </div>
-                        <div class="progress-bar-bg">
-                            <div class="progress-bar-fill" style="width: 95%;"></div>
-                        </div>
-                    </div>
-                    <a href="#" class="btn-action">Modifier le progrès</a>
-                </div>
+            {% if anime.total_episode and anime.total_episode > 0 %}
+                {% set progress = (anime.current_episode / anime.total_episode * 100)|int %}
+            {% else %}
+                {% set progress = 0 %}
+            {% endif %}
+
+            <div class="progress-bar-container">
+                <div class="progress-bar" style="width: {{ progress }}%;"></div>
             </div>
+            <span>{{ progress }}%</span>
+        </div>
+    </a>
+    {% endfor %}
+</div>
 
-            <div class="anime-card">
-                <img src="https://via.placeholder.com/300x200" alt="Anime Title">
-                <div class="anime-info">
-                    <h4>Jujutsu Kaisen</h4>
-                    <div class="progress-container">
-                        <div class="progress-text">
-                            <span>Épisode 12 / 24</span>
-                            <span>50%</span>
-                        </div>
-                        <div class="progress-bar-bg">
-                            <div class="progress-bar-fill" style="width: 50%;"></div>
-                        </div>
-                    </div>
-                    <a href="#" class="btn-action">Modifier le progrès</a>
-                </div>
             </div>
         </div>
     </div>

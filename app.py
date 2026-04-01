@@ -1,10 +1,10 @@
 from deep_translator import GoogleTranslator
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from api.API import API
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin, login_user, LoginManager, login_required  # Ajout de LoginManager
+from flask_login import UserMixin, login_user, LoginManager, login_required, current_user
 import os
 
 app = Flask(__name__)
@@ -20,6 +20,7 @@ db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+login_manager.login_message = None
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -139,6 +140,8 @@ class Useranime(db.Model):
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
@@ -146,15 +149,18 @@ def login():
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, password):
             login_user(user)
-            return redirect(url_for('dashboard'))
-        return "Email ou mot de passe incorrect."
+            return redirect(url_for('index'))
 
-    # Si c'est un GET, on affiche simplement le formulaire
+        flash("Email ou mot de passe incorrect.", "error")
+        return redirect(url_for('login'))
+
     return render_template('login.html')
 
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
     if request.method == "POST":
         username = request.form.get("username")
         email = request.form.get("email")
@@ -181,10 +187,35 @@ def register():
         return redirect(url_for('login'))
 
     return render_template('register.html')
+
+
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    return render_template("dashboard.html")
+
+    user_animes = Useranime.query.filter_by(user_id=current_user.id).all()
+    total_global_episodes=0
+    nbr_anime=0
+    anime_list = []
+
+
+    for entry in user_animes:
+        total_global_episodes += (entry.current_episode or 0)
+        if (entry.current_episode or 0) > 0:
+            if entry.total_episode is None or entry.total_episode == 0 or entry.current_episode < entry.total_episode:
+                nbr_anime += 1
+        details = api.get_animes(entry.anime_id)
+        if details and 'data' in details:
+            anime_info = {
+                'id': entry.anime_id,
+                'title': details['data']['title'],
+                'image': details['data']['images']['jpg']['large_image_url'],
+                'current_episode': entry.current_episode,
+                'total_episode': entry.total_episode
+            }
+            anime_list.append(anime_info)
+
+    return render_template("dashboard.html", animes=anime_list, total_vu=total_global_episodes, nbr_anime=nbr_anime)
 
 
 from deep_translator import GoogleTranslator
