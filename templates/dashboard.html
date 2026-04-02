@@ -131,7 +131,7 @@
         <h2 style="margin-bottom: 20px;">Ma Progression</h2>
             <div class="anime-grid">
     {% for anime in animes %}
-    <a href="{{ url_for('detail_anime', mal_id=anime['mal_id']) }}" class="anime-card">
+    <div class="anime-card">
         <img src="{{ anime.image }}" alt="{{ anime.title }}">
         <div class="anime-info">
             <h3>{{ anime.title }}</h3>
@@ -148,7 +148,7 @@
             </div>
             <span>{{ progress }}%</span>
         </div>
-    </a>
+    </div>
     {% endfor %}
 </div>
 
