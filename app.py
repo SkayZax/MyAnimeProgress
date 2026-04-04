@@ -32,8 +32,12 @@ def load_user(user_id):
 def index():
     page = request.args.get('page', 1, type=int)
     genre_name= request.args.get('genres', type=str)
+    search_query = request.args.get('search', type=str)
     title=""
     animes = api.get_animepage(page)
+    if search_query:
+        animes = api.search_anime(search_query, page)
+        title = f"Résultats pour : {search_query}"
     if genre_name == 'Action':
         animes = api.get_animes_by_genre(genre_id=1, page=page)
     elif genre_name == 'Adventure':
@@ -126,8 +130,7 @@ def index():
     else:
         animes = api.get_animepage(page)
 
-    return render_template("index.html", animes=animes, current_page=page,)
-
+    return render_template("index.html", animes=animes, current_page=page, title=title)
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(150), unique=True, nullable=False)
