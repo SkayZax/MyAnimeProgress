@@ -34,3 +34,12 @@ class API:
     def get_relation(self, anime_id: int) -> dict:
         result = requests.get(f"{self.url_api}/{anime_id}/relations")
         return result.json()
+
+    def search_anime(self, query: str, page: int = 1) -> list:
+        params = {
+            "q": query,
+            "page": page
+        }
+        result = requests.get(self.url_api, params=params)
+        data = result.json()
+        return data.get("data", [])

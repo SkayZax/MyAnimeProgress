@@ -175,8 +175,10 @@
     </select>
     <button type="submit" class="btn-pagination">Filtrer</button>
 </form>
-    <input type="text" name="search" placeholder="Rechercher un anime" value="Ex:Naruto">
+    <form action="{{ url_for('index') }}" method="get" style="display: inline-block; text-align: center; margin: 20px;">
+    <input type="text" name="search" placeholder="Rechercher un anime..." value="{{ request.args.get('search', '') }}" style="padding: 10px; border-radius: 8px; border: none;">
     <button type="submit" class="btn-pagination">Rechercher</button>
+</form>
     <div class="utilisateur">
         <a href="login">
     <img src="{{ url_for('static', filename='utilisateur.png') }}" alt="logo">
@@ -202,11 +204,11 @@
 
 <div class="pagination-container">
     {% if current_page > 1 %}
-    <a href="{{url_for('index', page=current_page - 1, genres=request.args.get('genres'))}}" class="btn-pagination">Page Précédente</a>
+    <a href="{{ url_for('index', page=current_page - 1, genres=request.args.get('genres'), search=request.args.get('search')) }}" class="btn-pagination">Page Précédente</a>
     {% endif %}
 
     <span class="page-info"> Page {{ current_page }}</span>
 
-    <a href="{{url_for('index', page=current_page + 1, genres=request.args.get('genres'))}}" class="btn-pagination">Page suivante</a>
+    <a href="{{ url_for('index', page=current_page + 1, genres=request.args.get('genres'), search=request.args.get('search')) }}" class="btn-pagination">Page suivante</a>
 </div>
 </html>
