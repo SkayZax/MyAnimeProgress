@@ -15,6 +15,7 @@ api = API()
 app.config['SECRET_KEY'] = 'ma_cle_secrete_tres_longue' # Change ceci par une phrase complexe
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db' # Crée un fichier database.db
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['APPLICATION_ROOT'] = '/MyAnimeProgress'
 
 db = SQLAlchemy(app)
 
@@ -226,31 +227,26 @@ from deep_translator import GoogleTranslator
 # Dans ta route de détail :
 @app.route("/anime/<int:mal_id>")
 def detail_anime(mal_id):
-    anime_data = api.get_animes(mal_id)
+    anime_data = api.get_animes(mal_id) #
     anime = anime_data.get("data", {})
 
-    # Traduction du synopsis s'il existe
+    # Traduction automatique
     if anime.get("synopsis"):
-        traduction = GoogleTranslator(source='en', target='fr').translate(anime["synopsis"])
-        anime["synopsis"] = traduction
+        try:
+            traduction = GoogleTranslator(source='en', target='fr').translate(anime["synopsis"])
+            anime["synopsis"] = traduction
+        except:
+            pass
 
-    return render_template("details.html", anime=anime)
-
-
-@app.route("/anime/<int:anime_id>")
-def details(anime_id):
-    anime_data = api.get_animes(anime_id)
-
-    relations = api.get_relations(anime_id)
-
-    # 3. Filtrer pour ne garder que les Sequel (suites) et Prequel (précédents)
+    # Récupération des suites et préquelles
+    relations = api.get_relations(mal_id)
     seasons = []
     for rel in relations.get('data', []):
         if rel['relation'] in ['Sequel', 'Prequel']:
             for entry in rel['entry']:
                 seasons.append(entry)
 
-    return render_template("details.html", anime=anime_data['data'], seasons=seasons)
+    return render_template("details.html", anime=anime, seasons=seasons)
 @app.route("/add_to_list", methods=["POST"])
 @login_required
 def add_to_list():
