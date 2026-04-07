@@ -11,6 +11,7 @@ import random
 from datetime import datetime, timedelta
 from flask_mail import Mail, Message
 import requests
+from urllib.parse import urlparse, urljoin
 
 # Chargement variables d'environnement depuis un fichier .env (si présent)
 try:
@@ -58,6 +59,61 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = None
 
+
+ADULT_GENRES = {"Ecchi", "Erotica", "Hentai"}
+
+
+def _is_safe_url(target: str) -> bool:
+    """Empêche les redirections ouvertes (open redirect)."""
+    if not target:
+        return False
+    ref_url = urlparse(request.host_url)
+    test_url = urlparse(urljoin(request.host_url, target))
+    return test_url.scheme in ("http", "https") and ref_url.netloc == test_url.netloc
+
+
+def _age_verified() -> bool:
+    return bool(session.get("age_verified", False))
+
+
+def _anime_is_adult(anime: dict) -> bool:
+    """Détecte un contenu adulte via rating/genres (Jikan)."""
+    if not anime:
+        return False
+    rating = (anime.get("rating") or "").lower()
+    if rating.startswith("rx"):
+        return True
+    genres = anime.get("genres") or []
+    for g in genres:
+        name = (g.get("name") or "").strip()
+        if name in ADULT_GENRES:
+            return True
+    return False
+
+
+@app.route("/age-gate", methods=["GET", "POST"])
+def age_gate():
+    next_url = request.args.get("next") or request.form.get("next") or url_for("index")
+    if not _is_safe_url(next_url):
+        next_url = url_for("index")
+
+    if request.method == "POST":
+        if request.form.get("confirm") == "yes":
+            session["age_verified"] = True
+            # Optionnel: expiration “souple” (en jours). Ici on laisse la session gérer.
+            return redirect(next_url)
+        flash("Accès au contenu adulte refusé.", "warning")
+        return redirect(url_for("index"))
+
+    return render_template("age_gate.html", next_url=next_url)
+
+
+@app.route("/age-gate/revoke", methods=["POST"])
+def revoke_age_gate():
+    session.pop("age_verified", None)
+    flash("Le contenu adulte est de nouveau masqué.", "info")
+    return redirect(request.referrer or url_for("index"))
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -74,6 +130,11 @@ def index():
         search_query = search_query.strip()
 
     title = "MyAnimeProgress"
+
+    # Par défaut, on masque le contenu adulte tant que l'âge n'est pas confirmé.
+    if genre_name in ADULT_GENRES and not _age_verified():
+        flash("Ce genre contient du contenu adulte. Confirme que tu as 18+ pour continuer.", "warning")
+        return redirect(url_for("age_gate", next=request.full_path))
 
     # IMPORTANT: logique exclusive.
     # Priorité à la recherche, sinon filtre genre, sinon liste par défaut.
@@ -172,7 +233,14 @@ def index():
     else:
         animes = api.get_animepage(page)
 
-    return render_template("index.html", animes=animes, current_page=page, title=title)
+    return render_template(
+        "index.html",
+        animes=animes,
+        current_page=page,
+        title=title,
+        age_verified=_age_verified(),
+        adult_genres=sorted(ADULT_GENRES),
+    )
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(150), unique=True, nullable=False)
@@ -581,6 +649,11 @@ from deep_translator import GoogleTranslator
 def detail_anime(mal_id):
     anime_data = api.get_animes(mal_id) #
     anime = anime_data.get("data", {})
+
+    # Bloque l'accès aux fiches adultes si l'âge n'est pas confirmé.
+    if _anime_is_adult(anime) and not _age_verified():
+        flash("Cet animé est marqué comme contenu adulte. Confirme 18+ pour afficher la fiche.", "warning")
+        return redirect(url_for("age_gate", next=request.path))
 
     is_favorite = False
     try:
