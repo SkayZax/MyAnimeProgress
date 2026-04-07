@@ -179,6 +179,10 @@
       background-color: #ff0000;
    }
     </style>
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<meta name="theme-color" content="#ff0000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
 <header>
@@ -248,7 +252,7 @@
             </a>
         </div>
 
-        {% if age_verified %}
+H        {% if age_verified %}
             <form action="{{ url_for('revoke_age_gate') }}" method="post" style="margin:0;">
                 <button class="btn-user" type="submit" title="Masquer le contenu adulte">18+ : activé</button>
             </form>
