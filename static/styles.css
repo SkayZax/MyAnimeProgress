@@ -1,6 +1,22 @@
-
+/* Styles partagés (mobile-first) pour MyAnimeProgress */
 
 *, *::before, *::after { box-sizing: border-box; }
 
 html { background-color: #141414; }
 body { margin: 0; }
+
+img { max-width: 100%; height: auto; }
+
+/* Utilitaires */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+

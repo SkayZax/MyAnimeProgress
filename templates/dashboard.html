@@ -6,6 +6,7 @@
     <title>Dashboard - MyAnimeProgress</title>
     <style>
         /* --- Styles de base (Repris de index.html) --- */
+        *, *::before, *::after { box-sizing: border-box; }
         html { background-color: #141414; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: white; }
         body { margin: 0; display: flex; min-height: 100vh; }
 
@@ -86,6 +87,37 @@
             transition: 0.2s;
         }
         .btn-action:hover { background-color: #ff0000; color: white; }
+
+        /* --- Responsive --- */
+        @media (max-width: 900px) {
+            body { flex-direction: column; }
+
+            .sidebar {
+                position: static;
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 2px solid #ff0000;
+                flex-direction: row;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 8px;
+            }
+            .sidebar h2 { margin: 0; margin-right: auto; }
+            .sidebar a { padding: 10px 12px; margin: 0; }
+
+            .main-content { margin-left: 0; padding: 18px; }
+            header { flex-wrap: wrap; gap: 12px; }
+
+            .stats-container {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 520px) {
+            .stats-container { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>

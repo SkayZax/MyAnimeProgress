@@ -6,30 +6,33 @@
     <title>MyAnimeProgress</title>
 
     <style>
+        *, *::before, *::after { box-sizing: border-box; }
         html{
             background-color: #141414;
         }
+        body{ margin: 0; }
         header{
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
+            display: flex;
+            flex-wrap: wrap;
             align-items: center;
-            gap: 10px;
-            padding: 10px 20px;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 20px;
             color: white;
-}
+        }
 
         .header-left{
-            grid-column: 1;
-            justify-self: start;
             display: flex;
-            flex-direction: column;
+            flex-wrap: wrap;
             gap: 10px;
+            align-items: center;
         }
 
         .header-left form{
             display: flex;
             align-items: center;
             gap: 10px;
+            flex-wrap: wrap;
         }
 
         .header-left .btn-pagination{
@@ -37,10 +40,10 @@
         }
 
         header h1{
-            grid-column: 2;
-            justify-self: center;
             margin: 0;
             color: white;
+            flex: 1 1 220px;
+            text-align: center;
 }
 
         header hr{
@@ -53,17 +56,15 @@
             border: 1px solid black;
             display: flex;
             flex-direction: column;
-            width: 25%;
-            margin-bottom: 20px;
             border-radius: 12px;
-            margin-right: 20px;
             background-color: #222222;
             overflow: hidden;
             color: white;
             gap: 10px;
-            margin-left: 5%;
             text-decoration: none;
             cursor: pointer;
+            width: 100%;
+            min-width: 0;
         }
         .container:hover{
             border: 1px solid #ff0000;
@@ -74,10 +75,11 @@
             width: 75%;
         }
         .container img{
-             width: 100%;
-            height: 320px;
+            width: 100%;
+            aspect-ratio: 3 / 4;
+            height: auto;
             object-fit: cover;
-         }
+        }
         .container h1{
             text-align: center;
             color: white;
@@ -85,21 +87,27 @@
             margin: 10px 0;
          }
         .section{
-             display: flex;
-             flex-wrap: wrap;
-         }
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 20px;
+            padding: 16px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
         .container p{
             text-align: center;
             color: white;
         }
-        .pagination-container {
-    text-align: center;
-    margin: 20px 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 15px;
-}
+               .pagination-container {
+                  text-align: center;
+                  margin: 20px 0;
+                  display: flex;
+                  justify-content: center;
+                  align-items: center;
+                  gap: 15px;
+                  flex-wrap: wrap;
+                  padding: 0 16px;
+               }
 
 .btn-pagination {
     background-color: #ff0000;
@@ -115,8 +123,6 @@
     color: white;
 }
 
- .utilisateur{
- }
  .utilisateur img{
       width: 40px;
       border-radius: 8px;
@@ -156,13 +162,11 @@
    }
 
    .user-actions{
-      grid-column: 3;
-      justify-self: end;
-      align-self: center;
       display: flex;
       flex-direction: column;
       align-items: flex-end;
       gap: 10px;
+      flex: 0 0 auto;
    }
 
    .btn-user{
@@ -177,6 +181,25 @@
 
    .btn-user:hover{
       background-color: #ff0000;
+   }
+
+   /* --- Responsive --- */
+   @media (max-width: 1024px) {
+      .section{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+   }
+   @media (max-width: 768px) {
+      header{ padding: 12px 12px; }
+      header h1{ flex: 1 1 100%; text-align: left; }
+      .header-left{ flex: 1 1 100%; justify-content: flex-start; }
+      .header-left form{ width: 100%; }
+      .genre-select, input[type="text"]{ width: 100%; }
+      .btn-pagination{ width: 100%; text-align: center; }
+      .user-actions{ flex-direction: row; align-items: center; gap: 8px; }
+      .section{ grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px; }
+   }
+   @media (max-width: 420px) {
+      .section{ grid-template-columns: 1fr; }
+      .btn-user{ padding: 8px 10px; }
    }
     </style>
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
