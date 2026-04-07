@@ -17,6 +17,7 @@
         input { padding: 12px; border-radius: 5px; border: 1px solid #333; background-color: #333; color: white; }
         input:focus { outline: none; border-color: #ff0000; }
         .btn-login { background-color: #ff0000; color: white; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .error-message { background-color: #ff4d4d; color: white; padding: 10px; border-radius: 5px; text-align: center; font-size: 0.9em; border: 1px solid black; }
     </style>
 </head>
 <body>
@@ -24,8 +25,16 @@
     <hr style="border: 1px solid #ff0000; width: 100%; margin: 0;">
 
     <div class="main-content">
-        <form action="/register" method="post" class="login-container">
+        <form action="{{ url_for('register') }}" method="post" class="login-container">
             <h2 style="text-align: center;">Inscription</h2>
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="error-message">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
 
             <div class="form-group">
                 <label>Nom d'utilisateur</label>
@@ -44,7 +53,7 @@
 
             <button type="submit" class="btn-login">Créer mon compte</button>
             <div style="text-align: center; margin-top: 10px;">
-                <a href="/login" style="color: white; text-decoration: none; font-size: 0.9em;">Déjà un compte ? Se connecter</a>
+                <a href="{{ url_for('login') }}" style="color: white; text-decoration: none; font-size: 0.9em;">Déjà un compte ? Se connecter</a>
             </div>
         </form>
     </div>

@@ -1,1 +1,12 @@
 .idea
+
+# Secrets / config locale
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Flask / SQLite
+instance/
+*.db
