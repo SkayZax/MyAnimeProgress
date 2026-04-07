@@ -94,10 +94,10 @@
         <h2>MAP</h2>
         <a href="{{ url_for('index') }}">Accueil</a>
         <a href="#" class="active">Mon Dashboard</a>
-        <a href="#">Ma Liste</a>
+        <a href="{{ url_for('favorites') }}">Ma Liste (Favoris)</a>
         <a href="#">Paramètres</a>
         <div style="margin-top: auto;">
-            <a href="/logout" style="color: #ff4444;">Déconnexion</a>
+            <a href="{{ url_for('logout') }}" style="color: #ff4444;">Déconnexion</a>
         </div>
     </div>
 
@@ -124,7 +124,7 @@
             </div>
             <div class="stat-card">
                 <h3>Temps passé</h3>
-                <p>{{total_vu}}</p>
+                <p>{{ total_time_str }}</p>
             </div>
         </div>
 
@@ -136,6 +136,9 @@
         <div class="anime-info">
             <h3>{{ anime.title }}</h3>
             <p>Épisode : {{ anime.current_episode }} / {{ anime.total_episode or '?' }}</p>
+            <p style="margin: 6px 0 0 0; color: #bbb; font-size: 0.9em;">
+                Temps vu : {{ (anime.watched_minutes // 60) }}h{{ '%02d' % (anime.watched_minutes % 60) }}
+            </p>
 
             {% if anime.total_episode and anime.total_episode > 0 %}
                 {% set progress = (anime.current_episode / anime.total_episode * 100)|int %}
@@ -143,17 +146,13 @@
                 {% set progress = 0 %}
             {% endif %}
 
-            <div class="progress-bar-container">
-                <div class="progress-bar" style="width: {{ progress }}%;"></div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" style="width: {{ progress }}%"></div>
             </div>
             <span>{{ progress }}%</span>
         </div>
     </div>
     {% endfor %}
 </div>
-
-            </div>
-        </div>
-    </div>
 </body>
 </html>

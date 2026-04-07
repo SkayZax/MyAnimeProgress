@@ -146,7 +146,7 @@
     <hr style="border: 1px solid #ff0000; width: 100%; margin: 0;">
 
     <div class="main-content">
-        <form action="/login" method="post" class="login-container">
+        <form action="{{ url_for('login') }}" method="post" class="login-container">
             <h2>Connexion</h2>
             {% with messages = get_flashed_messages() %}
       {% if messages %}
@@ -170,7 +170,7 @@
             
             <div class="links">
                 <a href="#">Mot de passe oublié ?</a>
-                <a href="/register">Pas encore de compte ? S'inscrire</a>
+                <a href="{{ url_for('register') }}">Pas encore de compte ? S'inscrire</a>
             </div>
         </form>
     </div>
