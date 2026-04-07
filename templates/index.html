@@ -251,8 +251,7 @@
                 <img src="{{ url_for('static', filename='utilisateur.png') }}" alt="logo">
             </a>
         </div>
-
-H        {% if age_verified %}
+        {% if age_verified %}
             <form action="{{ url_for('revoke_age_gate') }}" method="post" style="margin:0;">
                 <button class="btn-user" type="submit" title="Masquer le contenu adulte">18+ : activé</button>
             </form>
