@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Connexion - MyAnimeProgress</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <style>
         html {
             background-color: #141414;
@@ -17,18 +18,18 @@
             min-height: 100vh;
         }
         header {
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
             align-items: center;
             gap: 10px;
             padding: 10px 20px;
             color: white;
         }
         header h1 {
-            grid-column: 2;
-            justify-self: center;
             margin: 0;
             color: white;
+            text-align: center;
         }
         header hr {
             border: 1px solid #ff0000;
@@ -137,6 +138,16 @@
     border: 1px solid black;
 }
 
+    </style>
+
+    <style>
+        /* Responsive */
+        @media (max-width: 480px) {
+            header { padding: 12px 12px; }
+            .main-content { padding: 12px; }
+            .login-container { padding: 18px; }
+            .btn-login { width: 100%; }
+        }
     </style>
 </head>
 <body>
