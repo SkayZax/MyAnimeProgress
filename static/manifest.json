@@ -1,0 +1,17 @@
+{
+  "name": "MyAnimeProgress",
+  "short_name": "MAP",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#141414",
+  "theme_color": "#ff0000",
+  "description": "Suivez votre progression d'animés préférés.",
+  "icons": [
+    {
+      "src": "/static/utilisateur.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
