@@ -13,4 +13,5 @@ gunicorn>=23 ; sys_platform != "win32"
 urllib3>=2.8,<3
 certifi>=2026.10.18
 idna>=3.15
-soupsieve>=4.0.0
+soupsieve>=4.0.0 ; python_version >= "3.12"
+soupsieve>=3.0.1 ; python_version < "3.12"  # sélecteurs CSS non utilisés par deep-translator
