@@ -670,10 +670,12 @@ def detail_anime(mal_id):
         return redirect(url_for("age_gate", next=request.path))
 
     is_favorite = False
+    current_episode = 0
     try:
         if current_user.is_authenticated:
             entry = Useranime.query.filter_by(user_id=current_user.id, anime_id=mal_id).first()
             is_favorite = bool(entry and entry.is_favorite)
+            current_episode = (entry.current_episode or 0) if entry else 0
     except Exception:
         is_favorite = False
 
@@ -703,6 +705,7 @@ def detail_anime(mal_id):
         anime=anime,
         seasons=seasons,
         is_favorite=is_favorite,
+        current_episode=current_episode,
     )
 
 @app.route("/add_to_list", methods=["POST"])
