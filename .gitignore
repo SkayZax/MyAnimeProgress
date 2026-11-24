@@ -1,6 +1,7 @@
 .idea
 
 # Secrets / config locale
+.env
 
 
 # Python
