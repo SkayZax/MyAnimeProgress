@@ -5,7 +5,7 @@ Créer un compte et noter à quel épisode vous êtes arrivé pour chaque animé
 📋 Ce que fait le projet
 
 Affiche une liste d'animés avec leurs images
-Utilise l'API Jikan pour récupérer les données MyAnimeList
+Utilise l'API Tenrai pour récupérer les données MyAnimeList
 
 🔜 À venir
 
@@ -15,4 +15,4 @@ Recherche d'animés
 Listes personnalisées
 
 📚 API
-Utilise Jikan API : https://docs.api.jikan.moe/
+Utilise Tenrai API (compatible Jikan v4) : https://api.tenrai.org/documentation

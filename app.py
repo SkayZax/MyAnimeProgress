@@ -1,9 +1,9 @@
 from deep_translator import GoogleTranslator
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, abort, render_template, request, redirect, url_for, flash, session
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from api.API import API
+from api.API import API, APIError
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
 import os
@@ -63,6 +63,13 @@ login_manager.login_message = None
 ADULT_GENRES = {"Ecchi", "Erotica", "Hentai"}
 
 
+@app.errorhandler(APIError)
+def api_unavailable(error):
+    """Affiche une page claire quand l'API d'animés ne répond pas."""
+    app.logger.warning("API d'animés indisponible : %s", error)
+    return render_template("api_error.html"), 503
+
+
 def _is_safe_url(target: str) -> bool:
     """Empêche les redirections ouvertes (open redirect)."""
     if not target:
@@ -77,7 +84,7 @@ def _age_verified() -> bool:
 
 
 def _anime_is_adult(anime: dict) -> bool:
-    """Détecte un contenu adulte via rating/genres (Jikan)."""
+    """Détecte un contenu adulte via rating/genres (Tenrai)."""
     if not anime:
         return False
     rating = (anime.get("rating") or "").lower()
@@ -598,7 +605,7 @@ def dashboard():
                 nbr_anime += 1
         details = api.get_animes(entry.anime_id)
         if details and 'data' in details:
-            # Durée moyenne d'un épisode (minutes) – via Jikan: ex "23 min per ep"
+            # Durée moyenne d'un épisode (minutes) – via Tenrai: ex "23 min per ep"
             duration_str = (details['data'].get('duration') or "").lower()
             duration_min = 0
             try:
@@ -648,7 +655,9 @@ from deep_translator import GoogleTranslator
 @app.route("/anime/<int:mal_id>")
 def detail_anime(mal_id):
     anime_data = api.get_animes(mal_id) #
-    anime = anime_data.get("data", {})
+    anime = anime_data.get("data")
+    if not anime:
+        abort(404)
 
     # Bloque l'accès aux fiches adultes si l'âge n'est pas confirmé.
     if _anime_is_adult(anime) and not _age_verified():
@@ -672,14 +681,25 @@ def detail_anime(mal_id):
             pass
 
     # Récupération des suites et préquelles
-    relations = api.get_relation(mal_id)
+    # (secondaire : la fiche reste affichée si cet appel échoue)
+    try:
+        relations = api.get_relation(mal_id)
+    except APIError as e:
+        app.logger.warning("Relations indisponibles : %s", e)
+        relations = {}
     seasons = []
     for rel in relations.get('data', []):
         if rel['relation'] in ['Sequel', 'Prequel']:
             for entry in rel['entry']:
                 seasons.append(entry)
 
-    return render_template("details.html", anime=anime, seasons=seasons, is_favorite=is_favorite)
+    return render_template(
+        "details.html",
+        anime=anime,
+        seasons=seasons,
+        is_favorite=is_favorite,
+    )
+
 @app.route("/add_to_list", methods=["POST"])
 @login_required
 def add_to_list():

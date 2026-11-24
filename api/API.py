@@ -1,18 +1,52 @@
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+
+class APIError(Exception):
+    """L'API d'animes est injoignable ou a renvoye une reponse inutilisable."""
+
+
 class API:
+    # (connexion, lecture) en secondes
+    TIMEOUT = (5, 10)
+
     def __init__(self):
-        self.url_api = "https://api.jikan.moe/v4/anime"
+        # Tenrai reprend le format de Jikan v4 (API publique fermee le 1er octobre 2026)
+        self.url_api = "https://api.tenrai.org/v1/anime"
+        self.session = requests.Session()
+        # Coupure : un nouvel essai. Limite de debit ou erreur serveur : deux, dont un apres ~2 s
+        retry = Retry(
+            total=2,
+            connect=1,
+            read=1,
+            backoff_factor=1,
+            backoff_jitter=0.5,
+            status_forcelist=(429, 502, 503, 504),
+            respect_retry_after_header=False,
+            raise_on_status=False,
+        )
+        self.session.mount("https://", HTTPAdapter(max_retries=retry))
+
+    def _get(self, url: str, params: dict | None = None) -> dict:
+        """Renvoie le JSON, {} si la ressource n'existe pas, ou leve APIError."""
+        try:
+            result = self.session.get(url, params=params, timeout=self.TIMEOUT)
+            if result.status_code == 404:
+                return {}
+            result.raise_for_status()
+            return result.json()
+        except requests.exceptions.RequestException as e:
+            raise APIError(f"{url} : {e}") from e
 
     def get_animes(self, anime_id: int) -> dict:
-        result = requests.get(f"{self.url_api}/{anime_id}")
-        return result.json()
+        return self._get(f"{self.url_api}/{anime_id}")
 
     def gettitlefromjson(self,anime_json: dict) -> str:
         return anime_json["data"]["title"]
 
     def get_animepage(self,page: int=1)->list:
-        result=requests.get(self.url_api,params={"page":page})
-        data=result.json()
+        data = self._get(self.url_api, {"page": page})
         return data.get("data",[])
 
     def images(self,anime_json: dict)->str:
@@ -28,18 +62,15 @@ class API:
             "genres": genre_id,
             "page": page
         }
-        result = requests.get(self.url_api, params=params)
-        data = result.json()
+        data = self._get(self.url_api, params)
         return data.get("data", [])
     def get_relation(self, anime_id: int) -> dict:
-        result = requests.get(f"{self.url_api}/{anime_id}/relations")
-        return result.json()
+        return self._get(f"{self.url_api}/{anime_id}/relations")
 
     def search_anime(self, query: str, page: int = 1) -> list:
         params = {
             "q": query,
             "page": page
         }
-        result = requests.get(self.url_api, params=params)
-        data = result.json()
+        data = self._get(self.url_api, params)
         return data.get("data", [])
