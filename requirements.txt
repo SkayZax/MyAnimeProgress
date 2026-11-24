@@ -13,5 +13,6 @@ gunicorn>=23 ; sys_platform != "win32"
 urllib3>=2.8,<3
 certifi>=2026.10.18
 idna>=3.15
-soupsieve>=4.0.0 ; python_version >= "3.12"
-soupsieve>=3.0.1 ; python_version < "3.12"  # sélecteurs CSS non utilisés par deep-translator
+soupsieve>=4.0.0 ; python_full_version >= "3.11.5"
+# Python 3.11.2 (Debian 12) : pas plus récent. deep-translator n'utilise pas ses sélecteurs CSS.
+soupsieve>=2.10 ; python_full_version < "3.11.5"
