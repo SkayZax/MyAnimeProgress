@@ -8,6 +8,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
 import os
 import random
+import secrets
 from datetime import datetime, timedelta
 from flask_mail import Mail, Message
 import requests
@@ -27,7 +28,11 @@ app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 api = API()
 # CONFIGURATION INDISPENSABLE
-app.config['SECRET_KEY'] = 'ma_cle_secrete_tres_longue' # Change ceci par une phrase complexe
+# Signe les sessions : à définir dans .env, jamais dans le code (dépôt public).
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+if not app.config['SECRET_KEY']:
+    app.logger.warning("SECRET_KEY absente de .env : clé temporaire, les sessions seront perdues au redémarrage.")
+    app.config['SECRET_KEY'] = secrets.token_hex(32)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db' # Crée un fichier database.db
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Si ton app est réellement montée sous un sous-chemin (ex: /MyAnimeProgress) via un reverse proxy,
