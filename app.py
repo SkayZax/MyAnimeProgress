@@ -70,6 +70,11 @@ def api_unavailable(error):
     return render_template("api_error.html"), 503
 
 
+@app.errorhandler(404)
+def page_not_found(error):
+    return render_template("404.html"), 404
+
+
 def _is_safe_url(target: str) -> bool:
     """Empêche les redirections ouvertes (open redirect)."""
     if not target:

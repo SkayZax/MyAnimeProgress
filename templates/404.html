@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% from "_macros.html" import titre %}
+{% block title %}Page introuvable - MyAnimeProgress{% endblock %}
+{% block main_class %}seul seul--info{% endblock %}
+
+{% block contenu %}
+{{ titre("Page", "introuvable") }}
+<p class="intro">Cette page ou cet animé n'existe pas.</p>
+<div class="actions">
+    <a class="btn" href="{{ url_for('index') }}">Voir tous les animés</a>
+</div>
+{% endblock %}
