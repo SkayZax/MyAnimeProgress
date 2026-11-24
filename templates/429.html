@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% from "_macros.html" import titre %}
+{% block title %}Trop de demandes - MyAnimeProgress{% endblock %}
+{% block main_class %}seul seul--info{% endblock %}
+
+{% block contenu %}
+{{ titre("Trop de", "demandes") }}
+<p class="intro">Tu as fait trop d'essais en peu de temps. Attends quelques minutes avant de recommencer.</p>
+<div class="actions">
+    <a class="btn" href="{{ url_for('index') }}">Voir tous les animés</a>
+</div>
+{% endblock %}

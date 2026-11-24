@@ -7,6 +7,7 @@
 {{ titre("As-tu au moins", "18 ans ?") }}
 <p class="intro">La suite peut afficher du contenu réservé aux personnes majeures. Confirme ton âge pour continuer.</p>
 <form method="post" action="{{ url_for('age_gate') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="next" value="{{ next_url }}">
     <div class="actions">
         <button class="btn" type="submit" name="confirm" value="yes">J'ai 18 ans ou plus</button>

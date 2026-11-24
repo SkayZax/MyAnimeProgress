@@ -12,6 +12,7 @@
         <img src="{{ anime['images']['jpg']['large_image_url'] }}" alt="Affiche de {{ anime['title'] }}" width="360" height="540">
         {% if current_user.is_authenticated %}
         <form action="{{ url_for('toggle_favorite') }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="anime_id" value="{{ anime.mal_id }}">
             <input type="hidden" name="total_episode" value="{{ anime.episodes }}">
             <button type="submit" class="btn btn--ligne btn--large">{% if is_favorite %}★ Retirer des favoris{% else %}☆ Ajouter aux favoris{% endif %}</button>
@@ -32,6 +33,7 @@
 
         {% if current_user.is_authenticated %}
         <form class="suivi" action="{{ url_for('add_to_list') }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="anime_id" value="{{ anime.mal_id }}">
             <input type="hidden" name="total_episode" value="{{ anime.episodes }}">
             <div class="suivi__tete">
@@ -83,18 +85,5 @@
     </div>
 </article>
 
-<script>
-    (function () {
-        var form = document.querySelector('form.suivi');
-        if (!form) return;
-        var sortie = document.getElementById('episode-choisi');
-        form.addEventListener('input', function (e) {
-            if (e.target.name === 'current_episode') sortie.textContent = e.target.value || 0;
-        });
-        // Amène la case de l'épisode en cours dans la zone visible, sans faire défiler la page
-        var cases = form.querySelector('.cases');
-        var actuelle = form.querySelector('input:checked');
-        if (cases && actuelle) cases.scrollTop = actuelle.parentNode.offsetTop - cases.offsetTop - cases.clientHeight / 2;
-    })();
-</script>
+<script src="{{ url_for('static', filename='fiche.js') }}" defer></script>
 {% endblock %}

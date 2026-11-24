@@ -45,6 +45,7 @@
         {% endif %}
         {% if age_verified %}
         <form action="{{ url_for('revoke_age_gate') }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="btn btn--ligne btn--petit" type="submit">Masquer le contenu 18+</button>
         </form>
         {% else %}

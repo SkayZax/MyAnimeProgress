@@ -4,10 +4,13 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from api.API import API, APIError
+from securite import Limiteur
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.exc import IntegrityError
+from flask_wtf.csrf import CSRFError, CSRFProtect
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
 import os
-import random
+import re
 import secrets
 from datetime import datetime, timedelta
 from flask_mail import Mail, Message
@@ -25,7 +28,7 @@ except Exception:
 app = Flask(__name__)
 # En dev local (python app.py), on n'est généralement pas derrière un reverse proxy.
 # ProxyFix peut casser les URLs si aucun header X-Forwarded-* n'est fourni.
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 api = API()
 # CONFIGURATION INDISPENSABLE
 # Signe les sessions : à définir dans .env, jamais dans le code (dépôt public).
@@ -41,6 +44,15 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Assure que les cookies de session sont valables à la racine
 app.config['SESSION_COOKIE_PATH'] = '/'
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+# À mettre à 1 en production (HTTPS) : le cookie ne circule alors jamais en clair.
+app.config['SESSION_COOKIE_SECURE'] = os.getenv('COOKIE_SECURE', '0') == '1'
+app.config['MAX_CONTENT_LENGTH'] = 64 * 1024
+app.config['WTF_CSRF_TIME_LIMIT'] = None  # le jeton dure autant que la session
+
+csrf = CSRFProtect(app)
+limiteur = Limiteur()
+MINUTE, HEURE = 60, 3600
 
 db = SQLAlchemy(app)
 
@@ -80,9 +92,48 @@ def page_not_found(error):
     return render_template("404.html"), 404
 
 
+@app.errorhandler(CSRFError)
+def csrf_invalid(error):
+    flash("La page avait expiré. Recommence.", "error")
+    return redirect(_safe_referrer())
+
+
+@app.before_request
+def limit_requests():
+    """Évite qu'un visiteur n'épuise le quota de l'API d'animés."""
+    if request.endpoint != 'static' and not limiteur.autoriser(f"page:{request.remote_addr}", 120, MINUTE):
+        return _too_many()
+
+
+@app.after_request
+def security_headers(response):
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('X-Frame-Options', 'DENY')
+    response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    response.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+    response.headers.setdefault(
+        'Content-Security-Policy',
+        "default-src 'self'; script-src 'self'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; "
+        "object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+    )
+    if request.is_secure:
+        response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000')
+    return response
+
+
+def _too_many():
+    return render_template("429.html"), 429
+
+
+def _safe_referrer() -> str:
+    return request.referrer if _is_safe_url(request.referrer) else url_for("index")
+
+
 def _is_safe_url(target: str) -> bool:
     """Empêche les redirections ouvertes (open redirect)."""
-    if not target:
+    if not target or "\\" in target:  # les navigateurs lisent \ comme /
         return False
     ref_url = urlparse(request.host_url)
     test_url = urlparse(urljoin(request.host_url, target))
@@ -141,7 +192,7 @@ def age_gate():
 def revoke_age_gate():
     session.pop("age_verified", None)
     flash("Le contenu adulte est de nouveau masqué.", "info")
-    return redirect(request.referrer or url_for("index"))
+    return redirect(_safe_referrer())
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -281,7 +332,7 @@ class User(UserMixin, db.Model):
 
 
 def _generate_verification_code() -> str:
-    return f"{random.randint(0, 999999):06d}"
+    return f"{secrets.randbelow(1_000_000):06d}"
 
 
 def _send_verification_email(to_email: str, code: str) -> None:
@@ -383,7 +434,6 @@ def _send_verification_email(to_email: str, code: str) -> None:
 
     resp = requests.post(url, headers=headers, json=payload, timeout=timeout_s)
     if resp.status_code >= 400:
-        # Sanitize: ne pas exposer la clé API, mais donner l'info utile.
         raise RuntimeError(f"Erreur Brevo HTTP {resp.status_code}: {resp.text}")
 
 
@@ -399,7 +449,7 @@ class Useranime(db.Model):
     is_favorite = db.Column(db.Boolean, default=False, nullable=False)
 
 
-@app.route('/logout', methods=['GET', 'POST'])
+@app.route('/logout', methods=['POST'])
 @login_required
 def logout():
     # Déconnexion Flask-Login
@@ -439,7 +489,7 @@ def favorites():
 def toggle_favorite():
     anime_id = request.form.get('anime_id', type=int)
     total_ep = request.form.get('total_episode', type=int)
-    if not anime_id:
+    if not anime_id or anime_id < 1 or not 0 <= (total_ep or 0) <= 100_000:
         return redirect(url_for('index'))
 
     entry = Useranime.query.filter_by(user_id=current_user.id, anime_id=anime_id).first()
@@ -460,28 +510,88 @@ def toggle_favorite():
     db.session.commit()
 
     # Retour à la page précédente si possible
-    return redirect(request.referrer or url_for('detail_anime', mal_id=anime_id))
+    return redirect(_safe_referrer())
+
+# Sert à passer le même temps à vérifier un compte inexistant (ne révèle pas qui est inscrit)
+_FAUX_HACHAGE = generate_password_hash(secrets.token_hex(16), method='pbkdf2:sha256')
+MDP_MIN, MDP_MAX = 8, 128
+
+
+def _normalize_email(value) -> str:
+    return (value or '').strip().lower()
+
+
+def _find_user(email: str):
+    return User.query.filter(db.func.lower(User.email) == email).first() if email else None
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
+        email = _normalize_email(request.form.get('email'))
+        password = request.form.get('password') or ''
 
-        user = User.query.filter_by(email=email).first()
-        if user and check_password_hash(user.password, password):
+        # Échecs par IP, par IP et compte, puis par compte (attaque répartie)
+        ip = request.remote_addr
+        limites = (
+            (f"login:ip:{ip}", 20, 15 * MINUTE),
+            (f"login:ip-compte:{ip}:{email}", 8, 15 * MINUTE),
+            (f"login:compte:{email}", 50, HEURE),
+        )
+        if any(limiteur.trop(*limite) for limite in limites):
+            return _too_many()
+
+        user = _find_user(email)
+        valide = len(password) <= MDP_MAX and check_password_hash(user.password if user else _FAUX_HACHAGE, password)
+        if user and valide:
+            limiteur.oublier(limites[1][0])
             if not user.is_verified:
+                session['verify_user_id'] = user.id
                 flash("Votre compte n'est pas vérifié. Entrez le code reçu par email.", "error")
-                return redirect(url_for('verify', email=user.email))
+                return redirect(url_for('verify'))
             login_user(user)
             return redirect(url_for('index'))
 
+        for cle, _, fenetre in limites:
+            limiteur.compter(cle, fenetre)
         flash("Email ou mot de passe incorrect.", "error")
         return redirect(url_for('login'))
 
     return render_template('login.html')
+
+
+def _registration_error(username: str, email: str, password: str):
+    if not 3 <= len(username) <= 30:
+        return "Le nom d'utilisateur doit faire entre 3 et 30 caractères."
+    if len(email) > 150 or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        return "L'adresse email n'est pas valide."
+    if not MDP_MIN <= len(password) <= MDP_MAX:
+        return f"Le mot de passe doit faire au moins {MDP_MIN} caractères."
+    if _find_user(email):
+        return "Cet email est déjà utilisé."
+    if User.query.filter(db.func.lower(User.username) == username.lower()).first():
+        return "Ce nom d'utilisateur est déjà pris. Veuillez en choisir un autre."
+    return None
+
+
+def _send_code(user, sent_message: str) -> None:
+    """Envoie le code et informe l'utilisateur, sans montrer les détails techniques."""
+    try:
+        _send_verification_email(user.email, user.verification_code)
+        flash(sent_message, "success")
+    except Exception as e:
+        app.logger.error("Envoi du code impossible : %s", e)
+        msg = "L'email n'a pas pu être envoyé. Réessaie plus tard."
+        if _dev_should_show_code():
+            msg += f" (Code DEV: {user.verification_code})"
+        flash(msg, "error")
+
+
+def _new_code(user) -> None:
+    user.verification_code = _generate_verification_code()
+    user.verification_expires_at = datetime.utcnow() + timedelta(minutes=15)
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -489,52 +599,48 @@ def register():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     if request.method == "POST":
-        username = request.form.get("username")
-        email = request.form.get("email")
-        password = request.form.get("password")
+        if not limiteur.autoriser(f"register:{request.remote_addr}", 15, HEURE):
+            return _too_many()
 
-        # 1. Vérifier si l'email existe déjà
-        email_exists = User.query.filter_by(email=email).first()
-        if email_exists:
-            flash("Cet email est déjà utilisé.", "error")
+        username = (request.form.get("username") or '').strip()
+        email = _normalize_email(request.form.get("email"))
+        password = request.form.get("password") or ''
+
+        erreur = _registration_error(username, email, password)
+        if erreur:
+            flash(erreur, "error")
             return render_template('register.html')
 
-        # 2. Vérifier si le nom d'utilisateur existe déjà (AJOUT ICI)
-        username_exists = User.query.filter_by(username=username).first()
-        if username_exists:
-            flash("Ce nom d'utilisateur est déjà pris. Veuillez en choisir un autre.", "error")
-            return render_template('register.html')
-
-        # Hachage du mot de passe
-        hashed_pw = generate_password_hash(password, method='pbkdf2:sha256')
-
-        # Création et enregistrement du nouvel utilisateur (non vérifié)
-        code = _generate_verification_code()
-        expires_at = datetime.utcnow() + timedelta(minutes=15)
+        # Nouvel utilisateur (non vérifié)
         new_user = User(
             email=email,
             username=username,
-            password=hashed_pw,
+            password=generate_password_hash(password, method='pbkdf2:sha256'),
             is_verified=False,
-            verification_code=code,
-            verification_expires_at=expires_at,
         )
+        _new_code(new_user)
         db.session.add(new_user)
-        db.session.commit()
-
-        # Envoi du mail (si SMTP configuré)
         try:
-            _send_verification_email(email, code)
-        except Exception as e:
-            # On laisse le compte créé, mais on informe l'utilisateur.
-            msg = f"Compte créé, mais impossible d'envoyer l'email de vérification: {e}"
-            if _dev_should_show_code():
-                msg += f" (Code DEV: {code})"
-            flash(msg, "error")
+            db.session.commit()
+        except IntegrityError:
+            # Deux inscriptions identiques au même instant
+            db.session.rollback()
+            flash("Cet email ou ce nom d'utilisateur est déjà utilisé.", "error")
+            return render_template('register.html')
 
-        return redirect(url_for('verify', email=email))
+        session['verify_user_id'] = new_user.id
+        limiteur.compter(f"code:envoi:{new_user.id}", HEURE)
+        _send_code(new_user, "Compte créé. Le code t'a été envoyé par email.")
+        return redirect(url_for('verify'))
 
     return render_template('register.html')
+
+
+def _user_to_verify():
+    """Compte en attente, connu seulement de celui qui vient de s'inscrire ou de donner son mot de passe."""
+    user_id = session.get('verify_user_id')
+    user = db.session.get(User, user_id) if user_id else None
+    return user if user and not user.is_verified else None
 
 
 @app.route('/verify', methods=['GET', 'POST'])
@@ -542,73 +648,65 @@ def verify():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
 
-    email = request.args.get('email') or request.form.get('email')
-    if not email:
-        flash("Email manquant pour la vérification.", "error")
-        return redirect(url_for('register'))
-
-    user = User.query.filter_by(email=email).first()
+    user = _user_to_verify()
     if not user:
-        flash("Utilisateur introuvable.", "error")
-        return redirect(url_for('register'))
+        flash("Connecte-toi pour vérifier ton compte.", "error")
+        return redirect(url_for('login'))
 
     if request.method == 'POST':
         code = (request.form.get('code') or '').strip()
-        now = datetime.utcnow()
 
         if not user.verification_code or not user.verification_expires_at:
             flash("Aucun code actif. Cliquez sur 'Renvoyer le code'.", "error")
-            return redirect(url_for('verify', email=email))
+            return redirect(url_for('verify'))
 
-        if user.verification_expires_at < now:
+        if user.verification_expires_at < datetime.utcnow():
             flash("Code expiré. Cliquez sur 'Renvoyer le code'.", "error")
-            return redirect(url_for('verify', email=email))
+            return redirect(url_for('verify'))
 
-        if code != user.verification_code:
+        essais = f"code:essai:{user.id}"
+        if not limiteur.autoriser(essais, 5, 15 * MINUTE):
+            # Trop d'erreurs : ce code ne vaut plus rien
+            user.verification_code = None
+            user.verification_expires_at = None
+            db.session.commit()
+            flash("Trop d'essais. Cliquez sur 'Renvoyer le code'.", "error")
+            return redirect(url_for('verify'))
+
+        if not secrets.compare_digest(code.encode(), user.verification_code.encode()):
             flash("Code incorrect.", "error")
-            return redirect(url_for('verify', email=email))
+            return redirect(url_for('verify'))
 
         user.is_verified = True
         user.verification_code = None
         user.verification_expires_at = None
         db.session.commit()
+        session.pop('verify_user_id', None)
+        limiteur.oublier(essais)
 
         flash("Compte vérifié ! Vous pouvez vous connecter.", "success")
         return redirect(url_for('login'))
 
-    return render_template('verify.html', email=email)
+    return render_template('verify.html', email=user.email)
 
 
 @app.route('/resend-code', methods=['POST'])
 def resend_code():
-    email = request.form.get('email')
-    if not email:
-        flash("Email manquant.", "error")
-        return redirect(url_for('register'))
-
-    user = User.query.filter_by(email=email).first()
+    user = _user_to_verify()
     if not user:
-        flash("Utilisateur introuvable.", "error")
-        return redirect(url_for('register'))
-
-    if user.is_verified:
-        flash("Compte déjà vérifié.", "success")
+        flash("Connecte-toi pour vérifier ton compte.", "error")
         return redirect(url_for('login'))
 
-    code = _generate_verification_code()
-    user.verification_code = code
-    user.verification_expires_at = datetime.utcnow() + timedelta(minutes=15)
-    db.session.commit()
+    if not limiteur.autoriser(f"code:envoi:{user.id}", 4, HEURE) \
+            or not limiteur.autoriser(f"code:envoi-ip:{request.remote_addr}", 15, HEURE):
+        flash("Trop de demandes. Réessaie dans une heure.", "error")
+        return redirect(url_for('verify'))
 
-    try:
-        _send_verification_email(user.email, code)
-        flash("Code renvoyé par email.", "success")
-    except Exception as e:
-        msg = f"Impossible d'envoyer l'email: {e}"
-        if _dev_should_show_code():
-            msg += f" (Code DEV: {code})"
-        flash(msg, "error")
-    return redirect(url_for('verify', email=user.email))
+    _new_code(user)
+    db.session.commit()
+    limiteur.oublier(f"code:essai:{user.id}")
+    _send_code(user, "Code renvoyé par email.")
+    return redirect(url_for('verify'))
 
 
 @app.route("/dashboard")
@@ -739,6 +837,9 @@ def add_to_list():
     anime_id = request.form.get("anime_id", type=int)
     current_ep = request.form.get("current_episode", type=int)
     total_ep = request.form.get("total_episode", type=int)
+    if not anime_id or anime_id < 1 or not 0 <= (current_ep or 0) <= 100_000 or not 0 <= (total_ep or 0) <= 100_000:
+        flash("Progression invalide.", "error")
+        return redirect(_safe_referrer())
 
     # 2. Vérifier si cet animé est déjà dans la liste de l'utilisateur
     existing_entry = Useranime.query.filter_by(

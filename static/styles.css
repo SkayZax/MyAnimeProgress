@@ -92,6 +92,7 @@ button, input, select { font: inherit; color: inherit; border-radius: 0; }
 
 .compte { display: flex; align-items: center; gap: 20px; }
 .lien-discret { color: var(--sourdine); text-decoration: none; padding: 10px 0; white-space: nowrap; }
+button.lien-discret { background: none; border: 0; cursor: pointer; }
 .lien-discret:hover { color: var(--blanc); text-decoration: underline; text-underline-offset: 4px; }
 
 /* --- Structure ----------------------------------------------------------- */

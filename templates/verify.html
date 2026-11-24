@@ -10,7 +10,7 @@
 </div>
 <div class="colonne">
     <form class="formulaire" action="{{ url_for('verify') }}" method="post">
-        <input type="hidden" name="email" value="{{ email }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="champ code">
             <label for="code">Code de vérification</label>
             <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
@@ -18,7 +18,7 @@
         <button type="submit" class="btn btn--large">Valider le code</button>
     </form>
     <form class="formulaire" action="{{ url_for('resend_code') }}" method="post">
-        <input type="hidden" name="email" value="{{ email }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn--ligne btn--large">Renvoyer le code</button>
     </form>
     <p><a href="{{ url_for('login') }}">Retour à la connexion</a></p>
