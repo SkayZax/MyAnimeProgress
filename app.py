@@ -84,6 +84,18 @@ def _is_safe_url(target: str) -> bool:
     return test_url.scheme in ("http", "https") and ref_url.netloc == test_url.netloc
 
 
+def _episode_counts(anime: dict, saved_total: int | None = None, seen: int | None = 0):
+    """Renvoie (total final, épisodes sortis). Le second n'est rempli que si la série est en cours."""
+    total = anime.get("episodes") or saved_total or None
+    released = None
+    if not total and anime.get("airing"):
+        released = api.get_released_episodes(anime["mal_id"])
+        # La liste de l'API peut avoir du retard : un épisode vu est forcément sorti.
+        if released:
+            released = max(released, seen or 0)
+    return total, released
+
+
 def _age_verified() -> bool:
     return bool(session.get("age_verified", False))
 
@@ -405,12 +417,14 @@ def favorites():
     for entry in fav_entries:
         details = api.get_animes(entry.anime_id)
         if details and 'data' in details:
+            total, released = _episode_counts(details['data'], entry.total_episode, entry.current_episode)
             anime_list.append({
                 'id': entry.anime_id,
                 'title': details['data']['title'],
                 'image': details['data']['images']['jpg']['large_image_url'],
                 'current_episode': entry.current_episode,
-                'total_episode': entry.total_episode,
+                'total_episode': total,
+                'released': released,
             })
     return render_template('favorites.html', animes=anime_list)
 
@@ -605,10 +619,13 @@ def dashboard():
 
     for entry in user_animes:
         total_global_episodes += (entry.current_episode or 0)
-        if (entry.current_episode or 0) > 0:
-            if entry.total_episode is None or entry.total_episode == 0 or entry.current_episode < entry.total_episode:
-                nbr_anime += 1
         details = api.get_animes(entry.anime_id)
+        total, released = entry.total_episode, None
+        if details and 'data' in details:
+            total, released = _episode_counts(details['data'], entry.total_episode, entry.current_episode)
+        if (entry.current_episode or 0) > 0:
+            if not total or entry.current_episode < total:
+                nbr_anime += 1
         if details and 'data' in details:
             # Durée moyenne d'un épisode (minutes) – via Tenrai: ex "23 min per ep"
             duration_str = (details['data'].get('duration') or "").lower()
@@ -632,7 +649,8 @@ def dashboard():
                 'title': details['data']['title'],
                 'image': details['data']['images']['jpg']['large_image_url'],
                 'current_episode': entry.current_episode,
-                'total_episode': entry.total_episode,
+                'total_episode': total,
+                'released': released,
                 'duration_min': duration_min,
                 'watched_minutes': watched_eps * duration_min,
             }
@@ -706,6 +724,7 @@ def detail_anime(mal_id):
         seasons=seasons,
         is_favorite=is_favorite,
         current_episode=current_episode,
+        released=_episode_counts(anime, seen=current_episode)[1],
     )
 
 @app.route("/add_to_list", methods=["POST"])

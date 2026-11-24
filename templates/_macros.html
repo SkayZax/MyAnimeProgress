@@ -3,6 +3,11 @@
 <{{ balise }} class="titre"><b>{{ gras }}</b> <span>{{ maigre }}</span></{{ balise }}>
 {%- endmacro %}
 
+{# Total affiché : final, sinon épisodes sortis, sinon « ? » #}
+{% macro total_texte(total, sortis) -%}
+{% if total %}{{ total }}{% elif sortis %}{{ sortis }} sortis{% else %}?{% endif %}
+{%- endmacro %}
+
 {# Barre de progression : un segment par épisode jusqu'à 60 épisodes, pleine au-delà #}
 {% macro barre(vus, total) -%}
 {% set vus = vus or 0 %}

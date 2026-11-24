@@ -22,8 +22,8 @@
             <h3>{{ anime.title }}</h3>
             <p>{{ anime.watched_minutes // 60 }}h{{ '%02d' % (anime.watched_minutes % 60) }} de visionnage</p>
         </div>
-        {{ barre(anime.current_episode, anime.total_episode) }}
-        <p class="ligne__compte"><span class="sr-only">Épisode </span><b>{{ anime.current_episode or 0 }}</b> / {{ anime.total_episode or '?' }}</p>
+        {{ barre(anime.current_episode, anime.total_episode or anime.released) }}
+        <p class="ligne__compte"><span class="sr-only">Épisode </span><b>{{ anime.current_episode or 0 }}</b> / {{ anime.total_episode or anime.released or '?' }}{% if not anime.total_episode and anime.released %}<small>sortis</small>{% endif %}</p>
     </a>
     {% endfor %}
 </div>
