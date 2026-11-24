@@ -1,18 +1,12 @@
-<!doctype html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Service indisponible - MyAnimeProgress</title>
-    <style>
-        body { background: #141414; color: white; font-family: sans-serif; padding: 24px; margin: 0; text-align: center; }
-        h1 { color: #ff0000; }
-        a { color: white; }
-    </style>
-</head>
-<body>
-    <h1>Service indisponible</h1>
-    <p>Le catalogue d'animés ne répond pas pour le moment. Ta progression est bien conservée.</p>
-    <a href="{{ request.full_path if request.method == 'GET' else url_for('index') }}">Réessayer</a>
-</body>
-</html>
+{% extends "base.html" %}
+{% from "_macros.html" import titre %}
+{% block title %}Service indisponible - MyAnimeProgress{% endblock %}
+{% block main_class %}seul seul--info{% endblock %}
+
+{% block contenu %}
+{{ titre("Catalogue", "indisponible") }}
+<p class="intro">Le service qui fournit les animés ne répond pas pour le moment. Ta progression est bien conservée.</p>
+<div class="actions">
+    <a class="btn" href="{{ request.full_path if request.method == 'GET' else url_for('index') }}">Réessayer</a>
+</div>
+{% endblock %}

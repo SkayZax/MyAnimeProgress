@@ -1,0 +1,14 @@
+{# Titre à deux graisses souligné de la barre rouge, comme le logo #}
+{% macro titre(gras, maigre, balise='h1') -%}
+<{{ balise }} class="titre"><b>{{ gras }}</b> <span>{{ maigre }}</span></{{ balise }}>
+{%- endmacro %}
+
+{# Barre de progression : un segment par épisode jusqu'à 60 épisodes, pleine au-delà #}
+{% macro barre(vus, total) -%}
+{% set vus = vus or 0 %}
+{% set total = total or 0 %}
+{% set pct = [(vus / total * 100)|int, 100]|min if total > 0 else 0 %}
+{% if not total and vus %}<div class="barre barre--ouverte" aria-hidden="true"><i></i></div>
+{%- else %}<div class="barre{% if 1 < total <= 60 %} barre--episodes{% endif %}" style="--pct: {{ pct }}%; --n: {{ total or 1 }}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ pct }}" aria-label="Progression"><i></i></div>
+{%- endif %}
+{%- endmacro %}

@@ -1,78 +1,99 @@
-<!doctype html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ anime['title'] }} - MyAnimeProgress</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <style>
-        *, *::before, *::after { box-sizing: border-box; }
-        body { background-color: #141414; color: white; font-family: sans-serif; padding: 24px; margin: 0; }
-        .detail-container { display: flex; gap: 40px; max-width: 1000px; margin: auto; background: #222; padding: 30px; border-radius: 15px; border: 1px solid #ff0000; }
-        img { border-radius: 10px; width: 300px; max-width: 100%; height: auto; }
-        .info h1 { color: #ff0000; margin-top: 0; }
-        .synopsis { line-height: 1.6; color: #ccc; }
-        .btn-back { display: inline-block; margin-bottom: 20px; color: white; text-decoration: none; border: 1px solid #ff0000; padding: 10px; border-radius: 5px; }
-        .favorite-btn { background: transparent; border: 1px solid #ff0000; color: #ff0000; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .favorite-btn:hover { background: #ff0000; color: white; }
-        .title-row { display: flex; align-items: center; gap: 12px; }
+{% extends "base.html" %}
+{% set statuts = {'Finished Airing': 'Terminé', 'Currently Airing': 'En cours', 'Not yet aired': 'À venir'} %}
+{% set total = anime.episodes or 0 %}
+{% set vus = current_episode or 0 %}
 
-        select, button, input { font: inherit; }
-        select { max-width: 100%; }
+{% block title %}{{ anime['title'] }} - MyAnimeProgress{% endblock %}
 
-        @media (max-width: 768px) {
-            body { padding: 14px; }
-            .detail-container { flex-direction: column; gap: 18px; padding: 18px; }
-            img { width: 100%; max-width: 420px; }
-            .title-row { flex-wrap: wrap; align-items: flex-start; }
-        }
-    </style>
-</head>
-<body>
-    <a href="{{ url_for('index') }}" class="btn-back">← Retour à l'accueil</a>
-
-    <div class="detail-container">
-        <img src="{{ anime['images']['jpg']['large_image_url'] }}" alt="{{ anime['title'] }}">
-        <div class="info">
-            <div class="title-row">
-                <h1 style="margin:0;">{{ anime['title'] }}</h1>
-                <form action="{{ url_for('toggle_favorite') }}" method="POST" style="margin:0;">
-                    <input type="hidden" name="anime_id" value="{{ anime.mal_id }}">
-                    <input type="hidden" name="total_episode" value="{{ anime.episodes }}">
-                    <button type="submit" class="favorite-btn" title="Ajouter aux favoris">
-                        {% if is_favorite %}★ Favori{% else %}☆ Favori{% endif %}
-                    </button>
-                </form>
-            </div>
-            <p><strong>Score :</strong> ⭐ {{ anime['score'] }}</p>
-            <p><strong>Épisodes :</strong> {{ anime['episodes'] }}</p>
-            <p><strong>Statut :</strong> {{ anime['status'] }}</p>
-            <div class="synopsis">
-                <h3>Synopsis</h3>
-                <p>{{ anime['synopsis'] }}</p>
-                <label>Saison :</label>
-<select onchange="window.location.href='/anime/' + this.value">
-    <option value="{{ anime.mal_id }}" selected>{{ anime.title }} (Actuelle)</option>
-    {% for s in seasons %}
-        <option value="{{ s.mal_id }}">{{ s.name }}</option>
-    {% endfor %}
-</select>
-
-<form action="/add_to_list" method="POST">
-    <input type="hidden" name="anime_id" value="{{ anime.mal_id }}">
-    <input type="hidden" name="total_episode" value="{{ anime.episodes }}">
-
-    <label>Épisode actuel :</label>
-    <select name="current_episode">
-        {% for i in range(1, (anime.episodes or 0) + 1) %}
-            <option value="{{ i }}">Épisode {{ i }}</option>
-        {% endfor %}
-    </select>
-
-    <button type="submit">Enregistrer ma progression</button>
-</form>
-            </div>
-        </div>
+{% block contenu %}
+<article class="fiche">
+    <div class="fiche__affiche">
+        <img src="{{ anime['images']['jpg']['large_image_url'] }}" alt="Affiche de {{ anime['title'] }}" width="360" height="540">
+        {% if current_user.is_authenticated %}
+        <form action="{{ url_for('toggle_favorite') }}" method="POST">
+            <input type="hidden" name="anime_id" value="{{ anime.mal_id }}">
+            <input type="hidden" name="total_episode" value="{{ anime.episodes }}">
+            <button type="submit" class="btn btn--ligne btn--large">{% if is_favorite %}★ Retirer des favoris{% else %}☆ Ajouter aux favoris{% endif %}</button>
+        </form>
+        {% endif %}
     </div>
-</body>
-</html>
+
+    <div>
+        <h1 class="fiche__titre">{{ anime['title'] }}</h1>
+        {% if anime['genres'] %}<p class="fiche__genres">{{ anime['genres'] | map(attribute='name') | join(', ') }}</p>{% endif %}
+
+        <dl class="faits">
+            <div><dt>Score</dt><dd>{{ (anime['score']|string).replace('.', ',') if anime['score'] else '–' }}</dd></div>
+            <div><dt>Épisodes</dt><dd>{{ anime['episodes'] or '?' }}</dd></div>
+            <div><dt>Statut</dt><dd>{{ statuts.get(anime['status'], anime['status'] or '–') }}</dd></div>
+            {% if anime['rating'] %}<div><dt>Classification</dt><dd>{{ anime['rating'].split(' - ')[0] }}</dd></div>{% endif %}
+        </dl>
+
+        {% if current_user.is_authenticated %}
+        <form class="suivi" action="{{ url_for('add_to_list') }}" method="POST">
+            <input type="hidden" name="anime_id" value="{{ anime.mal_id }}">
+            <input type="hidden" name="total_episode" value="{{ anime.episodes }}">
+            <div class="suivi__tete">
+                <h2>Ma progression</h2>
+                <p>Épisode <output id="episode-choisi">{{ vus }}</output> sur {{ anime.episodes or '?' }}</p>
+            </div>
+
+            {% if 0 < total <= 250 %}
+            <fieldset>
+                <legend class="sr-only">Dernier épisode vu</legend>
+                <div class="cases">
+                    {% for i in range(1, total + 1) %}
+                    <label class="case"><input type="radio" name="current_episode" value="{{ i }}" required {% if i == vus %}checked{% endif %}><span><span class="sr-only">Épisode </span>{{ i }}</span></label>
+                    {% endfor %}
+                </div>
+            </fieldset>
+            {% else %}
+            <label class="libelle" for="episode">Dernier épisode vu</label>
+            <input class="champ-nombre" id="episode" type="number" name="current_episode" min="0" {% if total %}max="{{ total }}"{% endif %} value="{{ vus }}" required inputmode="numeric">
+            {% endif %}
+
+            <button type="submit" class="btn">Enregistrer ma progression</button>
+        </form>
+        {% else %}
+        <div class="suivi">
+            <div class="suivi__tete"><h2>Ma progression</h2></div>
+            <p>Connecte-toi pour noter l'épisode où tu en es.</p>
+            <a class="btn" href="{{ url_for('login') }}">Se connecter</a>
+        </div>
+        {% endif %}
+
+        {% if anime['synopsis'] %}
+        <section class="bloc">
+            <h2>Synopsis</h2>
+            <p class="synopsis">{{ anime['synopsis'] }}</p>
+        </section>
+        {% endif %}
+
+        {% if seasons %}
+        <section class="bloc">
+            <h2>Avant et après</h2>
+            <ul class="suites">
+                {% for s in seasons %}
+                <li><a href="{{ url_for('detail_anime', mal_id=s.mal_id) }}">{{ s.name }}</a></li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+    </div>
+</article>
+
+<script>
+    (function () {
+        var form = document.querySelector('form.suivi');
+        if (!form) return;
+        var sortie = document.getElementById('episode-choisi');
+        form.addEventListener('input', function (e) {
+            if (e.target.name === 'current_episode') sortie.textContent = e.target.value || 0;
+        });
+        // Amène la case de l'épisode en cours dans la zone visible, sans faire défiler la page
+        var cases = form.querySelector('.cases');
+        var actuelle = form.querySelector('input:checked');
+        if (cases && actuelle) cases.scrollTop = actuelle.parentNode.offsetTop - cases.offsetTop - cases.clientHeight / 2;
+    })();
+</script>
+{% endblock %}

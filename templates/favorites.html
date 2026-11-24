@@ -1,57 +1,25 @@
-<!doctype html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Mes favoris - MyAnimeProgress</title>
-    <style>
-        *, *::before, *::after { box-sizing: border-box; }
-        html { background-color: #141414; color: white; font-family: sans-serif; }
-        body { margin: 0; padding: 22px; }
-        a { color: white; text-decoration: none; }
-        .topbar { display:flex; justify-content: space-between; align-items:center; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
-        .btn { border: 1px solid #ff0000; padding: 10px 12px; border-radius: 8px; }
-        .btn:hover { background:#ff0000; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; }
-        .card { background:#222; border-radius: 12px; overflow:hidden; border:1px solid transparent; }
-        .card:hover { border-color:#ff0000; box-shadow: 0 10px 20px rgba(255,0,0,0.15); }
-        .card img { width: 100%; aspect-ratio: 3/4; height: auto; object-fit: cover; display:block; }
-        .card .info { padding: 12px; }
-        .card h3 { margin: 0 0 6px 0; font-size: 1.05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .muted { color: #bbb; font-size: 0.9em; }
+{% extends "base.html" %}
+{% from "_macros.html" import titre, barre %}
+{% block title %}Mes favoris - MyAnimeProgress{% endblock %}
 
-        @media (max-width: 480px) {
-            body { padding: 14px; }
-            .topbar > div { width: 100%; justify-content: stretch; }
-            .topbar > div a { flex: 1 1 auto; text-align: center; }
-            .grid { grid-template-columns: 1fr; }
-        }
-    </style>
-</head>
-<body>
-    <div class="topbar">
-        <h1 style="margin:0;">Mes favoris</h1>
-        <div style="display:flex; gap:10px;">
-            <a class="btn" href="{{ url_for('dashboard') }}">Dashboard</a>
-            <a class="btn" href="{{ url_for('index') }}">Accueil</a>
-        </div>
-    </div>
+{% block contenu %}
+<div class="catalogue__tete">{{ titre("Mes", "favoris") }}</div>
 
-    {% if animes|length == 0 %}
-        <p class="muted">Aucun animé en favori pour le moment. Va sur la page d’un animé et clique sur ☆ Favori.</p>
-    {% else %}
-        <div class="grid">
-            {% for anime in animes %}
-                <a class="card" href="{{ url_for('detail_anime', mal_id=anime.id) }}">
-                    <img src="{{ anime.image }}" alt="{{ anime.title }}">
-                    <div class="info">
-                        <h3>{{ anime.title }}</h3>
-                        <div class="muted">Épisode : {{ anime.current_episode or 0 }} / {{ anime.total_episode or '?' }}</div>
-                    </div>
-                </a>
-            {% endfor %}
-        </div>
-    {% endif %}
-</body>
-</html>
-
+{% if animes|length == 0 %}
+<div class="vide">
+    <p>Tu n'as pas encore de favori. Ouvre la fiche d'un animé et choisis «&nbsp;Ajouter aux favoris&nbsp;».</p>
+    <a class="btn" href="{{ url_for('index') }}">Parcourir le catalogue</a>
+</div>
+{% else %}
+<section class="grille" aria-label="Favoris">
+    {% for anime in animes %}
+    <a class="affiche" href="{{ url_for('detail_anime', mal_id=anime.id) }}">
+        <div class="affiche__image"><img src="{{ anime.image }}" alt="" loading="lazy" width="300" height="450"></div>
+        {{ barre(anime.current_episode, anime.total_episode) }}
+        <h2>{{ anime.title }}</h2>
+        <p>Épisode {{ anime.current_episode or 0 }} sur {{ anime.total_episode or '?' }}</p>
+    </a>
+    {% endfor %}
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>{% block title %}MyAnimeProgress{% endblock %}</title>
+
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#000000">
+    <meta name="color-scheme" content="dark">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body class="{% block body_class %}{% endblock %}{% if current_user.is_authenticated %} connecte{% endif %}">
+    <a class="lien-evitement" href="#contenu">Aller au contenu</a>
+
+    <header class="entete">
+        <div class="entete__ligne">
+            <a class="logo" href="{{ url_for('index') }}" aria-label="MyAnimeProgress, accueil"><b>MyAnime</b><span>Progress</span></a>
+
+            {% block recherche %}
+            <form class="recherche" action="{{ url_for('index') }}" method="get" role="search">
+                <label class="sr-only" for="recherche">Rechercher un animé</label>
+                <input id="recherche" type="search" name="search" placeholder="Rechercher un animé" value="{{ request.args.get('search', '') }}">
+                <button type="submit" aria-label="Lancer la recherche">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 4a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13ZM15.5 15.5 21 21"/></svg>
+                </button>
+            </form>
+            {% endblock %}
+
+            {% if current_user.is_authenticated %}
+            <nav class="menu" aria-label="Navigation principale">
+                <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}aria-current="page"{% endif %}>Catalogue</a>
+                <a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}aria-current="page"{% endif %}>Progression</a>
+                <a href="{{ url_for('favorites') }}" {% if request.endpoint == 'favorites' %}aria-current="page"{% endif %}>Favoris</a>
+                {# À venir : page de paramètres #}
+                <a href="#">Paramètres</a>
+            </nav>
+            <a class="lien-discret" href="{{ url_for('logout') }}">Déconnexion</a>
+            {% else %}
+            <div class="compte">
+                <a class="lien-discret" href="{{ url_for('login') }}">Connexion</a>
+                <a class="btn btn--petit" href="{{ url_for('register') }}">S'inscrire</a>
+            </div>
+            {% endif %}
+        </div>
+    </header>
+
+    <main id="contenu" class="{% block main_class %}page{% endblock %}">
+        {% block messages %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="messages" role="status">
+            {% for category, message in messages %}
+            <p class="message message--{{ category }}">{{ message }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+        {% endblock %}
+
+        {% block contenu %}{% endblock %}
+    </main>
+</body>
+</html>
