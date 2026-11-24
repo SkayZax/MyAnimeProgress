@@ -63,6 +63,9 @@
     </ul>
 </details>
 
+{% if masques %}
+<p class="intro masques">{% if masques == 1 %}1 animé 18+ est masqué{% else %}{{ masques }} animés 18+ sont masqués{% endif %} sur cette page. <a href="{{ url_for('age_gate', next=request.full_path) }}">Les afficher</a></p>
+{% endif %}
 {% if animes %}
 <section class="grille" aria-label="Animés">
     {% for anime in animes %}
@@ -76,7 +79,7 @@
     </a>
     {% endfor %}
 </section>
-{% else %}
+{% elif not masques %}
 <div class="vide">
     <p>{% if recherche %}Aucun animé ne correspond à «&nbsp;{{ recherche }}&nbsp;». Essaie le titre original ou un mot plus court.{% else %}Il n'y a rien sur cette page.{% endif %}</p>
     <a class="btn" href="{{ url_for('index') }}">Voir tous les animés</a>
@@ -88,7 +91,7 @@
     <a class="btn btn--ligne" href="{{ url_for('index', page=current_page - 1, genres=genre or none, search=recherche or none) }}">Page précédente</a>
     {% endif %}
     <strong>Page {{ current_page }}</strong>
-    {% if animes %}
+    {% if page_pleine %}
     <a class="btn btn--ligne" href="{{ url_for('index', page=current_page + 1, genres=genre or none, search=recherche or none) }}">Page suivante</a>
     {% endif %}
 </nav>

@@ -4,18 +4,20 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from api.API import API, APIError
-from securite import Limiteur
+from securite import Limiteur, mot_de_passe_trop_courant
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
 from flask_wtf.csrf import CSRFError, CSRFProtect
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
+import hashlib
 import os
 import re
 import secrets
 from datetime import datetime, timedelta
 from flask_mail import Mail, Message
+from itsdangerous import BadSignature, URLSafeTimedSerializer
 import requests
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urlparse
 
 # Chargement variables d'environnement depuis un fichier .env (si présent)
 try:
@@ -53,6 +55,9 @@ app.config['WTF_CSRF_TIME_LIMIT'] = None  # le jeton dure autant que la session
 csrf = CSRFProtect(app)
 limiteur = Limiteur()
 MINUTE, HEURE = 60, 3600
+JOUR = 24 * HEURE
+ID_MAX = 2**31 - 1  # au-delà, SQLite refuse la valeur
+SUIVIS_MAX = 500  # animés par compte
 
 db = SQLAlchemy(app)
 
@@ -133,23 +138,93 @@ def _safe_referrer() -> str:
 
 def _is_safe_url(target: str) -> bool:
     """Empêche les redirections ouvertes (open redirect)."""
-    if not target or "\\" in target:  # les navigateurs lisent \ comme /
+    # Les navigateurs lisent \ comme / et ignorent les caractères de contrôle
+    if not target or "\\" in target or any(ord(c) < 32 or ord(c) == 127 for c in target):
         return False
-    ref_url = urlparse(request.host_url)
-    test_url = urlparse(urljoin(request.host_url, target))
-    return test_url.scheme in ("http", "https") and ref_url.netloc == test_url.netloc
+    try:
+        url = urlparse(target)
+    except ValueError:
+        return False
+    if url.scheme or url.netloc:
+        # Adresse complète (Referer) : même site exactement. "http:///x" n'a pas de netloc, donc refusé.
+        return url.scheme in ("http", "https") and url.netloc == request.host
+    return target.startswith("/") and not target.startswith("//")
 
 
-def _episode_counts(anime: dict, saved_total: int | None = None, seen: int | None = 0):
-    """Renvoie (total final, épisodes sortis). Le second n'est rempli que si la série est en cours."""
-    total = anime.get("episodes") or saved_total or None
-    released = None
-    if not total and anime.get("airing"):
-        released = api.get_released_episodes(anime["mal_id"])
+def _duration_minutes(anime: dict) -> int:
+    """Durée d'un épisode à partir de "23 min per ep" ; 24 min si inconnue."""
+    trouve = re.search(r"(\d+) min", (anime.get("duration") or "").lower())
+    return int(trouve.group(1)) if trouve and int(trouve.group(1)) > 0 else 24
+
+
+def _save_info(anime: dict):
+    """Enregistre les infos d'un animé renvoyé par l'API."""
+    info = db.session.get(AnimeInfo, anime["mal_id"]) or AnimeInfo(id=anime["mal_id"])
+    info.title = (anime.get("title") or "?")[:300]
+    info.image = ((anime.get("images") or {}).get("jpg") or {}).get("large_image_url") or ""
+    info.duration_min = _duration_minutes(anime)
+    info.episodes = anime.get("episodes") or None
+    info.airing = bool(anime.get("airing"))
+    info.released = api.get_released_episodes(info.id) if info.airing and not info.episodes else None
+    info.updated_at = datetime.utcnow()
+    db.session.add(info)
+    db.session.commit()
+    return info
+
+
+APPELS_PAR_PAGE = 10
+
+
+def _infos(ids) -> dict:
+    """Infos des animés demandés. Rafraîchit au plus APPELS_PAR_PAGE fiches absentes ou anciennes."""
+    infos = {}
+    ids = list(dict.fromkeys(ids))
+    for i in range(0, len(ids), 500):
+        for info in AnimeInfo.query.filter(AnimeInfo.id.in_(ids[i:i + 500])):
+            infos[info.id] = info
+    maintenant = datetime.utcnow()
+
+    def perimee(info):
+        return info.updated_at < maintenant - (timedelta(hours=6) if info.airing else timedelta(days=14))
+
+    a_lire = [i for i in ids if i not in infos] + [i for i in ids if i in infos and perimee(infos[i])]
+    for anime_id in a_lire[:APPELS_PAR_PAGE]:
+        try:
+            anime = api.get_animes(anime_id).get("data")
+            if anime:
+                infos[anime_id] = _save_info(anime)
+        except APIError as e:
+            app.logger.warning("Infos non rafraîchies : %s", e)
+            break  # API en panne : on affiche ce qu'on a déjà
+        except IntegrityError:
+            db.session.rollback()  # enregistré au même instant par une autre requête
+    return infos
+
+
+def _entry_view(entry, info) -> dict:
+    """Ce que les pages Progression et Favoris affichent pour un animé suivi."""
+    total = (info.episodes if info else None) or entry.total_episode or None
+    released = info.released if info and not total else None
+    if released:
         # La liste de l'API peut avoir du retard : un épisode vu est forcément sorti.
-        if released:
-            released = max(released, seen or 0)
-    return total, released
+        released = max(released, entry.current_episode or 0)
+    vus = int(entry.current_episode or 0)
+    duree = info.duration_min if info else 24
+    return {
+        'id': entry.anime_id,
+        'title': info.title if info else f"Animé n° {entry.anime_id}",
+        'image': info.image if info else "",
+        'current_episode': entry.current_episode,
+        'total_episode': total,
+        'released': released,
+        'duration_min': duree,
+        'watched_minutes': vus * duree,
+    }
+
+
+def _list_is_full(anime_id: int) -> bool:
+    suivis = Useranime.query.filter_by(user_id=current_user.id)
+    return suivis.count() >= SUIVIS_MAX and suivis.filter_by(anime_id=anime_id).first() is None
 
 
 def _age_verified() -> bool:
@@ -196,7 +271,44 @@ def revoke_age_gate():
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    """Compte connecté, si sa session existe toujours côté serveur."""
+    jeton = session.get('sid')
+    if not jeton:
+        return None
+    ouverte = db.session.get(OpenSession, _hash_token(jeton))
+    if not ouverte or str(ouverte.user_id) != str(user_id) \
+            or ouverte.created_at < datetime.utcnow() - timedelta(days=SESSION_JOURS):
+        return None
+    return db.session.get(User, ouverte.user_id)
+
+
+SESSION_JOURS = 30
+SESSIONS_MAX = 10  # appareils connectés par compte
+
+
+def _hash_token(jeton: str) -> str:
+    # La base ne contient que l'empreinte : la lire ne permet pas de se connecter
+    return hashlib.sha256(jeton.encode()).hexdigest()
+
+
+def _open_session(user) -> None:
+    """Connecte l'utilisateur avec une session neuve, révocable à la déconnexion."""
+    adulte = _age_verified()
+    session.clear()
+    if adulte:
+        session['age_verified'] = True
+    jeton = secrets.token_urlsafe(32)
+    session['sid'] = jeton
+    maintenant = datetime.utcnow()
+    OpenSession.query.filter(OpenSession.created_at < maintenant - timedelta(days=SESSION_JOURS)).delete()
+    anciennes = OpenSession.query.filter_by(user_id=user.id).order_by(OpenSession.created_at.desc()).offset(SESSIONS_MAX - 1).all()
+    for ancienne in anciennes:
+        db.session.delete(ancienne)
+    db.session.add(OpenSession(id=_hash_token(jeton), user_id=user.id, created_at=maintenant))
+    db.session.commit()
+    login_user(user)
+
+
 @app.route("/", methods=["GET"])
 def index():
     page = request.args.get('page', 1, type=int)
@@ -313,9 +425,15 @@ def index():
     else:
         animes = api.get_animepage(page)
 
+    recus = len(animes)
+    if not _age_verified():
+        animes = [a for a in animes if not _anime_is_adult(a)]
+
     return render_template(
         "index.html",
         animes=animes,
+        masques=recus - len(animes),
+        page_pleine=recus > 0,
         current_page=page,
         title=title,
         age_verified=_age_verified(),
@@ -329,6 +447,26 @@ class User(UserMixin, db.Model):
     is_verified = db.Column(db.Boolean, default=False, nullable=False)
     verification_code = db.Column(db.String(6), nullable=True)
     verification_expires_at = db.Column(db.DateTime, nullable=True)
+    # Change à chaque inscription : lie le code à la personne qui a choisi le mot de passe
+    verification_nonce = db.Column(db.String(32), nullable=True)
+
+
+class OpenSession(db.Model):
+    id = db.Column(db.String(64), primary_key=True)  # empreinte du jeton
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, nullable=False)
+
+
+class AnimeInfo(db.Model):
+    """Infos d'un animé gardées en base : évite un appel API par animé suivi."""
+    id = db.Column(db.Integer, primary_key=True, autoincrement=False)  # identifiant MyAnimeList
+    title = db.Column(db.String(300), nullable=False)
+    image = db.Column(db.String(300), nullable=False)
+    duration_min = db.Column(db.Integer, nullable=False)
+    episodes = db.Column(db.Integer, nullable=True)
+    airing = db.Column(db.Boolean, nullable=False, default=False)
+    released = db.Column(db.Integer, nullable=True)
+    updated_at = db.Column(db.DateTime, nullable=False)
 
 
 def _generate_verification_code() -> str:
@@ -452,7 +590,9 @@ class Useranime(db.Model):
 @app.route('/logout', methods=['POST'])
 @login_required
 def logout():
-    # Déconnexion Flask-Login
+    # Révoque la session côté serveur : un cookie copié avant ne marche plus
+    OpenSession.query.filter_by(id=_hash_token(session.get('sid', ''))).delete()
+    db.session.commit()
     logout_user()
 
     # Nettoie la session pour éviter tout état résiduel
@@ -467,21 +607,9 @@ def logout():
 @app.route('/favorites')
 @login_required
 def favorites():
-    fav_entries = Useranime.query.filter_by(user_id=current_user.id, is_favorite=True).all()
-    anime_list = []
-    for entry in fav_entries:
-        details = api.get_animes(entry.anime_id)
-        if details and 'data' in details:
-            total, released = _episode_counts(details['data'], entry.total_episode, entry.current_episode)
-            anime_list.append({
-                'id': entry.anime_id,
-                'title': details['data']['title'],
-                'image': details['data']['images']['jpg']['large_image_url'],
-                'current_episode': entry.current_episode,
-                'total_episode': total,
-                'released': released,
-            })
-    return render_template('favorites.html', animes=anime_list)
+    entries = Useranime.query.filter_by(user_id=current_user.id, is_favorite=True).all()
+    infos = _infos(e.anime_id for e in entries)
+    return render_template('favorites.html', animes=[_entry_view(e, infos.get(e.anime_id)) for e in entries])
 
 
 @app.route('/toggle_favorite', methods=['POST'])
@@ -489,8 +617,12 @@ def favorites():
 def toggle_favorite():
     anime_id = request.form.get('anime_id', type=int)
     total_ep = request.form.get('total_episode', type=int)
-    if not anime_id or anime_id < 1 or not 0 <= (total_ep or 0) <= 100_000:
+    if not anime_id or not 1 <= anime_id <= ID_MAX or not 0 <= (total_ep or 0) <= 100_000:
         return redirect(url_for('index'))
+
+    if _list_is_full(anime_id):
+        flash(f"Ta liste est pleine ({SUIVIS_MAX} animés).", "error")
+        return redirect(_safe_referrer())
 
     entry = Useranime.query.filter_by(user_id=current_user.id, anime_id=anime_id).first()
     if entry is None:
@@ -525,6 +657,31 @@ def _find_user(email: str):
     return User.query.filter(db.func.lower(User.email) == email).first() if email else None
 
 
+COOKIE_APPAREIL = 'appareil'
+
+
+def _device_signer():
+    return URLSafeTimedSerializer(app.config['SECRET_KEY'], salt='appareil-connu')
+
+
+def _known_device(user):
+    """Identifiant de l'appareil s'il s'est déjà connecté à ce compte, sinon None."""
+    try:
+        user_id, appareil = _device_signer().loads(request.cookies.get(COOKIE_APPAREIL, ''), max_age=180 * JOUR)
+        return appareil if user and user_id == user.id else None
+    except (BadSignature, TypeError, ValueError):
+        return None
+
+
+def _remember_device(response, user):
+    response.set_cookie(
+        COOKIE_APPAREIL,
+        _device_signer().dumps([user.id, secrets.token_hex(8)]),
+        max_age=180 * JOUR, httponly=True, samesite='Lax', secure=app.config['SESSION_COOKIE_SECURE'],
+    )
+    return response
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -533,26 +690,28 @@ def login():
         email = _normalize_email(request.form.get('email'))
         password = request.form.get('password') or ''
 
-        # Échecs par IP, par IP et compte, puis par compte (attaque répartie)
+        # Échecs par IP, par IP et compte, puis par compte (attaque répartie) ou par appareil connu
         ip = request.remote_addr
+        user = _find_user(email)
+        appareil = _known_device(user)
         limites = (
             (f"login:ip:{ip}", 20, 15 * MINUTE),
             (f"login:ip-compte:{ip}:{email}", 8, 15 * MINUTE),
-            (f"login:compte:{email}", 50, HEURE),
+            # Un appareil déjà connecté garde son propre compteur : personne ne peut le bloquer à distance
+            (f"login:appareil:{appareil}", 8, 15 * MINUTE) if appareil else (f"login:compte:{email}", 50, HEURE),
         )
         if any(limiteur.trop(*limite) for limite in limites):
             return _too_many()
 
-        user = _find_user(email)
         valide = len(password) <= MDP_MAX and check_password_hash(user.password if user else _FAUX_HACHAGE, password)
         if user and valide:
             limiteur.oublier(limites[1][0])
             if not user.is_verified:
-                session['verify_user_id'] = user.id
+                _start_verification(user)
                 flash("Votre compte n'est pas vérifié. Entrez le code reçu par email.", "error")
                 return redirect(url_for('verify'))
-            login_user(user)
-            return redirect(url_for('index'))
+            _open_session(user)
+            return _remember_device(redirect(url_for('index')), user)
 
         for cle, _, fenetre in limites:
             limiteur.compter(cle, fenetre)
@@ -569,9 +728,14 @@ def _registration_error(username: str, email: str, password: str):
         return "L'adresse email n'est pas valide."
     if not MDP_MIN <= len(password) <= MDP_MAX:
         return f"Le mot de passe doit faire au moins {MDP_MIN} caractères."
-    if _find_user(email):
+    if mot_de_passe_trop_courant(password, username, email):
+        return "Ce mot de passe est trop facile à deviner. Choisis-en un autre."
+    # Un compte jamais vérifié ne réserve ni l'email ni le pseudo de quelqu'un d'autre
+    existant = _find_user(email)
+    if existant and existant.is_verified:
         return "Cet email est déjà utilisé."
-    if User.query.filter(db.func.lower(User.username) == username.lower()).first():
+    homonyme = User.query.filter(db.func.lower(User.username) == username.lower()).first()
+    if homonyme and homonyme != existant:
         return "Ce nom d'utilisateur est déjà pris. Veuillez en choisir un autre."
     return None
 
@@ -587,6 +751,18 @@ def _send_code(user, sent_message: str) -> None:
         if _dev_should_show_code():
             msg += f" (Code DEV: {user.verification_code})"
         flash(msg, "error")
+
+
+def _start_verification(user) -> None:
+    """Autorise cette session, et elle seule, à vérifier le compte."""
+    session['verify'] = [user.id, user.verification_nonce or '']
+
+
+def _purge_unverified() -> None:
+    """Supprime les inscriptions jamais vérifiées, un jour après l'expiration de leur code."""
+    limite = datetime.utcnow() - timedelta(days=1)
+    User.query.filter(User.is_verified.is_(False), User.verification_expires_at < limite).delete()
+    db.session.commit()
 
 
 def _new_code(user) -> None:
@@ -606,18 +782,19 @@ def register():
         email = _normalize_email(request.form.get("email"))
         password = request.form.get("password") or ''
 
+        _purge_unverified()
         erreur = _registration_error(username, email, password)
         if erreur:
             flash(erreur, "error")
             return render_template('register.html')
 
-        # Nouvel utilisateur (non vérifié)
-        new_user = User(
-            email=email,
-            username=username,
-            password=generate_password_hash(password, method='pbkdf2:sha256'),
-            is_verified=False,
-        )
+        # Nouvel utilisateur (non vérifié), ou reprise d'une inscription jamais vérifiée.
+        # Le nonce change : une inscription précédente avec cet email ne peut plus être validée.
+        new_user = _find_user(email) or User(email=email)
+        new_user.username = username
+        new_user.password = generate_password_hash(password, method='pbkdf2:sha256')
+        new_user.is_verified = False
+        new_user.verification_nonce = secrets.token_hex(16)
         _new_code(new_user)
         db.session.add(new_user)
         try:
@@ -628,8 +805,12 @@ def register():
             flash("Cet email ou ce nom d'utilisateur est déjà utilisé.", "error")
             return render_template('register.html')
 
-        session['verify_user_id'] = new_user.id
-        limiteur.compter(f"code:envoi:{new_user.id}", HEURE)
+        limiteur.oublier(f"code:essai:{new_user.id}")
+        _start_verification(new_user)
+        # Compté par email : on ne peut pas inonder quelqu'un en s'inscrivant en boucle à sa place
+        if not limiteur.autoriser(f"code:envoi:{email}", 4, HEURE):
+            flash("Trop de codes demandés pour cet email. Réessaie dans une heure.", "error")
+            return redirect(url_for('verify'))
         _send_code(new_user, "Compte créé. Le code t'a été envoyé par email.")
         return redirect(url_for('verify'))
 
@@ -638,9 +819,9 @@ def register():
 
 def _user_to_verify():
     """Compte en attente, connu seulement de celui qui vient de s'inscrire ou de donner son mot de passe."""
-    user_id = session.get('verify_user_id')
+    user_id, nonce = session.get('verify') or (None, None)
     user = db.session.get(User, user_id) if user_id else None
-    return user if user and not user.is_verified else None
+    return user if user and not user.is_verified and (user.verification_nonce or '') == nonce else None
 
 
 @app.route('/verify', methods=['GET', 'POST'])
@@ -668,7 +849,6 @@ def verify():
         if not limiteur.autoriser(essais, 5, 15 * MINUTE):
             # Trop d'erreurs : ce code ne vaut plus rien
             user.verification_code = None
-            user.verification_expires_at = None
             db.session.commit()
             flash("Trop d'essais. Cliquez sur 'Renvoyer le code'.", "error")
             return redirect(url_for('verify'))
@@ -681,7 +861,7 @@ def verify():
         user.verification_code = None
         user.verification_expires_at = None
         db.session.commit()
-        session.pop('verify_user_id', None)
+        session.pop('verify', None)
         limiteur.oublier(essais)
 
         flash("Compte vérifié ! Vous pouvez vous connecter.", "success")
@@ -697,7 +877,7 @@ def resend_code():
         flash("Connecte-toi pour vérifier ton compte.", "error")
         return redirect(url_for('login'))
 
-    if not limiteur.autoriser(f"code:envoi:{user.id}", 4, HEURE) \
+    if not limiteur.autoriser(f"code:envoi:{_normalize_email(user.email)}", 4, HEURE) \
             or not limiteur.autoriser(f"code:envoi-ip:{request.remote_addr}", 15, HEURE):
         flash("Trop de demandes. Réessaie dans une heure.", "error")
         return redirect(url_for('verify'))
@@ -713,51 +893,15 @@ def resend_code():
 @login_required
 def dashboard():
 
-    user_animes = Useranime.query.filter_by(user_id=current_user.id).all()
-    total_global_episodes = 0
-    total_minutes = 0
-    nbr_anime = 0
-    anime_list = []
-
-
-    for entry in user_animes:
-        total_global_episodes += (entry.current_episode or 0)
-        details = api.get_animes(entry.anime_id)
-        total, released = entry.total_episode, None
-        if details and 'data' in details:
-            total, released = _episode_counts(details['data'], entry.total_episode, entry.current_episode)
-        if (entry.current_episode or 0) > 0:
-            if not total or entry.current_episode < total:
-                nbr_anime += 1
-        if details and 'data' in details:
-            # Durée moyenne d'un épisode (minutes) – via Tenrai: ex "23 min per ep"
-            duration_str = (details['data'].get('duration') or "").lower()
-            duration_min = 0
-            try:
-                # Cas le plus courant: "23 min per ep"
-                if "min" in duration_str:
-                    duration_min = int(duration_str.split("min")[0].strip())
-            except Exception:
-                duration_min = 0
-
-            # Fallback si durée inconnue (on prend 24 min)
-            if duration_min <= 0:
-                duration_min = 24
-
-            watched_eps = int(entry.current_episode or 0)
-            total_minutes += watched_eps * duration_min
-
-            anime_info = {
-                'id': entry.anime_id,
-                'title': details['data']['title'],
-                'image': details['data']['images']['jpg']['large_image_url'],
-                'current_episode': entry.current_episode,
-                'total_episode': total,
-                'released': released,
-                'duration_min': duration_min,
-                'watched_minutes': watched_eps * duration_min,
-            }
-            anime_list.append(anime_info)
+    entries = Useranime.query.filter_by(user_id=current_user.id).all()
+    infos = _infos(e.anime_id for e in entries)
+    anime_list = [_entry_view(e, infos.get(e.anime_id)) for e in entries]
+    total_global_episodes = sum(a['current_episode'] or 0 for a in anime_list)
+    total_minutes = sum(a['watched_minutes'] for a in anime_list)
+    nbr_anime = sum(
+        1 for a in anime_list
+        if (a['current_episode'] or 0) > 0 and (not a['total_episode'] or a['current_episode'] < a['total_episode'])
+    )
 
     # Formatage du temps total: XhYY
     total_hours = total_minutes // 60
@@ -780,6 +924,8 @@ from deep_translator import GoogleTranslator
 # Dans ta route de détail :
 @app.route("/anime/<int:mal_id>")
 def detail_anime(mal_id):
+    if mal_id > ID_MAX:
+        abort(404)
     anime_data = api.get_animes(mal_id) #
     anime = anime_data.get("data")
     if not anime:
@@ -789,6 +935,13 @@ def detail_anime(mal_id):
     if _anime_is_adult(anime) and not _age_verified():
         flash("Cet animé est marqué comme contenu adulte. Confirme 18+ pour afficher la fiche.", "warning")
         return redirect(url_for("age_gate", next=request.path))
+
+    try:
+        released = _save_info(anime).released
+    except Exception as e:
+        db.session.rollback()
+        app.logger.warning("Infos non enregistrées : %s", e)
+        released = None
 
     is_favorite = False
     current_episode = 0
@@ -827,7 +980,7 @@ def detail_anime(mal_id):
         seasons=seasons,
         is_favorite=is_favorite,
         current_episode=current_episode,
-        released=_episode_counts(anime, seen=current_episode)[1],
+        released=max(released, current_episode) if released else None,
     )
 
 @app.route("/add_to_list", methods=["POST"])
@@ -837,8 +990,12 @@ def add_to_list():
     anime_id = request.form.get("anime_id", type=int)
     current_ep = request.form.get("current_episode", type=int)
     total_ep = request.form.get("total_episode", type=int)
-    if not anime_id or anime_id < 1 or not 0 <= (current_ep or 0) <= 100_000 or not 0 <= (total_ep or 0) <= 100_000:
+    if not anime_id or not 1 <= anime_id <= ID_MAX or not 0 <= (current_ep or 0) <= 100_000 or not 0 <= (total_ep or 0) <= 100_000:
         flash("Progression invalide.", "error")
+        return redirect(_safe_referrer())
+
+    if _list_is_full(anime_id):
+        flash(f"Ta liste est pleine ({SUIVIS_MAX} animés).", "error")
         return redirect(_safe_referrer())
 
     # 2. Vérifier si cet animé est déjà dans la liste de l'utilisateur
@@ -869,35 +1026,29 @@ def add_to_list():
     # 4. Rediriger vers le dashboard pour voir le résultat
     return redirect(url_for('dashboard'))
 
+
+def init_db() -> None:
+    """Crée les tables et ajoute les colonnes manquantes (migration légère, sans Alembic)."""
+    ajouts = {
+        'useranime': {'is_favorite': 'BOOLEAN NOT NULL DEFAULT 0'},
+        'user': {
+            'is_verified': 'BOOLEAN NOT NULL DEFAULT 0',
+            'verification_code': 'VARCHAR(6)',
+            'verification_expires_at': 'DATETIME',
+            'verification_nonce': 'VARCHAR(32)',
+        },
+    }
+    db.create_all()
+    for table, colonnes in ajouts.items():
+        presentes = {row[1] for row in db.session.execute(db.text(f"PRAGMA table_info({table})"))}
+        for nom, type_sql in colonnes.items():
+            if nom not in presentes:
+                db.session.execute(db.text(f"ALTER TABLE {table} ADD COLUMN {nom} {type_sql}"))
+    db.session.commit()
+
+
+with app.app_context():
+    init_db()
+
 if __name__ == "__main__":
-    with app.app_context():
-        # Crée les tables si elles n'existent pas
-        db.create_all()
-
-        # --- Migration légère SQLite (sans Alembic) ---
-        # Si on a ajouté des colonnes au modèle, SQLite ne les crée pas tout seul.
-        # On ajoute ici useranime.is_favorite si elle n'existe pas.
-        try:
-            cols = [row[1] for row in db.session.execute(db.text("PRAGMA table_info(useranime)")).fetchall()]
-            if 'is_favorite' not in cols:
-                db.session.execute(db.text("ALTER TABLE useranime ADD COLUMN is_favorite BOOLEAN NOT NULL DEFAULT 0"))
-                db.session.commit()
-        except Exception:
-            # Ne bloque pas le démarrage si jamais la DB est dans un état inattendu
-            db.session.rollback()
-
-        # Migration: vérification email sur la table user
-        try:
-            user_cols = [row[1] for row in db.session.execute(db.text("PRAGMA table_info(user)")).fetchall()]
-            if 'is_verified' not in user_cols:
-                db.session.execute(db.text("ALTER TABLE user ADD COLUMN is_verified BOOLEAN NOT NULL DEFAULT 0"))
-            if 'verification_code' not in user_cols:
-                db.session.execute(db.text("ALTER TABLE user ADD COLUMN verification_code VARCHAR(6)"))
-            if 'verification_expires_at' not in user_cols:
-                db.session.execute(db.text("ALTER TABLE user ADD COLUMN verification_expires_at DATETIME"))
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-
-        print("Base de données initialisée !")
-        app.run(debug=True)
+    app.run(debug=True)

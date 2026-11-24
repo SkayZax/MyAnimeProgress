@@ -191,6 +191,8 @@ button.lien-discret { background: none; border: 0; cursor: pointer; }
 .genres li a[aria-current] { color: var(--blanc); font-weight: 700; box-shadow: inset 4px 0 0 var(--rouge); padding-left: 14px; }
 .age { font-size: .75rem; font-weight: 700; padding: 1px 6px; border: 1px solid var(--trait-fort); color: var(--texte); margin-left: 6px; }
 
+.masques { margin: 0 0 28px; }
+
 .grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(188px, 1fr)); gap: 36px 22px; }
 
 .affiche { display: block; text-decoration: none; min-width: 0; }

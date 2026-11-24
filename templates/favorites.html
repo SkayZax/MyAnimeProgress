@@ -14,7 +14,7 @@
 <section class="grille" aria-label="Favoris">
     {% for anime in animes %}
     <a class="affiche" href="{{ url_for('detail_anime', mal_id=anime.id) }}">
-        <div class="affiche__image"><img src="{{ anime.image }}" alt="" loading="lazy" width="300" height="450"></div>
+        <div class="affiche__image"><img src="{{ anime.image or url_for('static', filename='icon-512.png') }}" alt="" loading="lazy" width="300" height="450"></div>
         {{ barre(anime.current_episode, anime.total_episode or anime.released) }}
         <h2>{{ anime.title }}</h2>
         <p>Épisode {{ anime.current_episode or 0 }} sur {{ total_texte(anime.total_episode, anime.released) }}</p>

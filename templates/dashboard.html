@@ -17,7 +17,7 @@
 <div class="suivis">
     {% for anime in animes %}
     <a class="ligne" href="{{ url_for('detail_anime', mal_id=anime.id) }}">
-        <img src="{{ anime.image }}" alt="" loading="lazy" width="72" height="108">
+        <img src="{{ anime.image or url_for('static', filename='icon-512.png') }}" alt="" loading="lazy" width="72" height="108">
         <div>
             <h3>{{ anime.title }}</h3>
             <p>{{ anime.watched_minutes // 60 }}h{{ '%02d' % (anime.watched_minutes % 60) }} de visionnage</p>

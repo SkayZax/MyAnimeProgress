@@ -3,6 +3,7 @@
 Les compteurs vivent dans le processus : gunicorn doit tourner avec un seul worker
 (plusieurs threads conviennent), et un redémarrage les remet à zéro.
 """
+import re
 import threading
 import time
 from collections import deque
@@ -54,3 +55,36 @@ class Limiteur:
         # Toujours plein (attaque) : on retire les clés les plus anciennes
         for cle in list(self._essais)[:max(0, len(self._essais) - self.MAX_CLES + 1)]:
             del self._essais[cle]
+
+
+_COURANTS = set("""
+password passwort motdepasse mdp azerty azertyuiop qwerty qwertyuiop qwertz admin administrateur
+administrator root welcome bienvenue letmein iloveyou jetaime bonjour soleil loulou doudou chouchou
+marseille paris france football princess princesse dragon monkey shadow sunshine superman batman
+starwars pokemon naruto onepiece dragonball anime manga myanimeprogress trustno secret changeme
+computer ordinateur internet samsung google facebook master killer freedom liberte amour coucou
+nicolas camille thomas julien chocolat papillon vacances test testtest user utilisateur guest
+michael jordan charlie ashley baseball basketball hockey soccer ninja mustang access passw
+qsdfghjklm asdfghjkl wxcvbn zxcvbnm azeqsd abcdefgh abcdefghi abcd abcde abcdef abc qazwsx
+""".split())
+_SUITES = ("01234567890123456789", "98765432109876543210", "abcdefghijklmnopqrstuvwxyz",
+           "azertyuiopqsdfghjklmwxcvbn", "qwertyuiopasdfghjklzxcvbnm")
+_LEET = str.maketrans("@4831!05$7", "aaeeiiosst")
+
+
+def mot_de_passe_trop_courant(mdp: str, pseudo: str = "", email: str = "") -> bool:
+    """Vrai pour les mots de passe que les attaquants essaient en premier."""
+    bas = mdp.lower()
+    if len(set(bas)) < 4 or any(bas in suite for suite in _SUITES):
+        return True
+    perso = {p for p in (pseudo.lower(), email.split("@")[0].lower(), email.lower()) if len(p) >= 4}
+    for forme in (bas, bas.translate(_LEET)):
+        coeur = re.sub(r"^[^a-z]+|[^a-z]+$", "", forme)
+        # Mot courant ou répété, entouré de chiffres ou de symboles : "Password1!", "azerty123", "testtest"
+        moitie = coeur[:len(coeur) // 2]
+        if coeur in _COURANTS or (moitie in _COURANTS and coeur == moitie * 2):
+            return True
+        if any(forme == p or coeur == re.sub(r"^[^a-z]+|[^a-z]+$", "", p) for p in perso):
+            return True
+    # Blocs répétés : "12341234", "abcabcabc"
+    return any(len(bas) % n == 0 and bas == bas[:n] * (len(bas) // n) for n in range(1, 5))
