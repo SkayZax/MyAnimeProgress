@@ -301,13 +301,31 @@ button.lien-discret { background: none; border: 0; cursor: pointer; }
 
 /* --- Paramètres ---------------------------------------------------------- */
 
-.reglages { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 24px; margin-top: 40px; align-items: start; }
-.reglage { display: grid; gap: 18px; padding: clamp(20px, 3vw, 32px); background: var(--noir-2); border: 1px solid var(--trait); }
-.reglage h2 { color: var(--blanc); font-size: 1.375rem; font-weight: 800; letter-spacing: -.01em; }
-.reglage > p { color: var(--sourdine); max-width: 60ch; }
-.reglage .note { margin-top: 0; }
+.profil { display: flex; flex-wrap: wrap; align-items: center; gap: 20px clamp(20px, 3vw, 32px); margin-top: 36px; padding: 28px 0 32px; border-bottom: 1px solid var(--trait); }
+.profil__initiale { display: grid; place-items: center; width: 72px; height: 72px; flex: none; background: var(--rouge-fond); color: var(--blanc); font-size: 2.25rem; font-weight: 800; line-height: 1; }
+.profil__nom { flex: 1 1 220px; min-width: 0; }
+.profil__nom p { color: var(--sourdine); overflow-wrap: anywhere; }
+.profil__nom b { color: var(--blanc); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+.profil__chiffres { display: flex; gap: clamp(28px, 5vw, 64px); }
+.profil__chiffres div { display: flex; flex-direction: column-reverse; }
+.profil__chiffres dt { color: var(--sourdine); font-size: .9375rem; }
+.profil__chiffres dd { color: var(--blanc); font-size: clamp(1.75rem, 3vw, 2.5rem); font-weight: 300; line-height: 1; font-variant-numeric: tabular-nums; margin-bottom: 6px; }
+
+.reglages { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: clamp(32px, 5vw, 80px); margin-top: 40px; align-items: start; }
+.reglages__sommaire { position: sticky; top: 100px; display: grid; }
+.reglages__sommaire a { padding: 10px 0 10px 16px; color: var(--sourdine); text-decoration: none; border-left: 3px solid var(--trait); }
+.reglages__sommaire a:hover { color: var(--blanc); border-left-color: var(--rouge); }
+.reglages__liste { display: grid; }
+
+.reglage { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 480px); gap: 20px clamp(32px, 5vw, 72px); padding: 36px 0; border-top: 1px solid var(--trait); scroll-margin-top: 110px; }
+.reglage:first-child { border-top: 0; padding-top: 0; }
+.reglage__tete h2 { color: var(--blanc); font-size: 1.25rem; font-weight: 800; letter-spacing: -.01em; }
+.reglage__tete p { margin-top: 8px; color: var(--sourdine); font-size: .9375rem; }
 .reglage .btn { justify-self: start; }
-.reglage--danger { border-color: var(--rouge); box-shadow: inset 4px 0 0 var(--rouge); }
+.reglage--danger { border-top-color: var(--rouge); }
+.reglage--danger h2 { color: var(--rouge); }
+
+.etat-ligne { color: var(--sourdine); }
 .etat { display: inline-block; margin-right: 8px; padding: 2px 10px; border: 1px solid var(--trait-fort); color: var(--blanc); font-weight: 700; font-size: .875rem; }
 .etat--actif { background: var(--rouge-fond); border-color: var(--rouge-fond); }
 .coche { display: flex; align-items: center; gap: 12px; min-height: 44px; cursor: pointer; }
@@ -331,6 +349,12 @@ button.lien-discret { background: none; border: 0; cursor: pointer; }
     .ligne .barre { grid-column: 2 / -1; order: 3; }
     .ligne .ligne__compte { font-size: 1.25rem; }
     .bilan div:first-child { flex-basis: 100%; }
+    .reglages { grid-template-columns: minmax(0, 1fr); margin-top: 28px; }
+    .reglages__sommaire { position: static; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 calc(-1 * var(--gouttiere)); padding: 0 var(--gouttiere); }
+    .reglages__sommaire a { flex: none; padding: 8px 14px; border: 1px solid var(--trait-fort); white-space: nowrap; font-size: .9375rem; }
+    .reglages__sommaire a:hover { border-color: var(--blanc); }
+    .reglage { grid-template-columns: minmax(0, 1fr); padding: 28px 0; scroll-margin-top: 150px; }
+    .reglage .btn { justify-self: stretch; }
 
     /* Navigation en bas, à portée de pouce */
     .connecte { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }

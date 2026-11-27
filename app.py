@@ -1199,7 +1199,13 @@ def add_to_list():
 @app.route('/settings')
 @login_required
 def settings():
-    return render_template('settings.html', adulte=_age_verified())
+    suivis = Useranime.query.filter_by(user_id=current_user.id)
+    return render_template(
+        'settings.html',
+        adulte=_age_verified(),
+        nb_suivis=suivis.count(),
+        nb_favoris=suivis.filter_by(is_favorite=True).count(),
+    )
 
 
 def _check_current_password(password: str) -> bool:
