@@ -1343,9 +1343,10 @@ def admin():
             Useranime.user_id,
             db.func.count(Useranime.id),
             db.func.sum(db.case((Useranime.is_favorite.is_(True), 1), else_=0)),
+            db.func.sum(Useranime.current_episode),
         ).group_by(Useranime.user_id)
     )
-    compteurs = {uid: (n, fav or 0) for uid, n, fav in suivis_par_compte}
+    compteurs = {uid: {'suivis': n, 'favoris': fav or 0, 'episodes': ep or 0} for uid, n, fav, ep in suivis_par_compte}
 
     comptes = User.query
     if recherche:
@@ -1355,9 +1356,14 @@ def admin():
 
     plus_suivis = (
         db.session.query(Useranime.anime_id, db.func.count(Useranime.id).label('n'))
-        .group_by(Useranime.anime_id).order_by(db.desc('n')).limit(5).all()
+        .group_by(Useranime.anime_id).order_by(db.desc('n')).limit(8).all()
     )
-    titres = {i.id: i.title for i in AnimeInfo.query.filter(AnimeInfo.id.in_([a for a, _ in plus_suivis]))}
+    infos = {i.id: i for i in AnimeInfo.query.filter(AnimeInfo.id.in_([a for a, _ in plus_suivis]))}
+    top = [{
+        'id': a, 'n': n,
+        'title': infos[a].title if a in infos else f"Animé n° {a}",
+        'image': infos[a].image if a in infos else "",
+    } for a, n in plus_suivis]
 
     stats = {
         'comptes': User.query.count(),
@@ -1366,9 +1372,11 @@ def admin():
         'favoris': Useranime.query.filter_by(is_favorite=True).count(),
         'episodes': db.session.query(db.func.coalesce(db.func.sum(Useranime.current_episode), 0)).scalar(),
     }
+    stats['par_compte'] = f"{stats['suivis'] / stats['comptes']:.1f}".replace('.0', '').replace('.', ',') if stats['comptes'] else '0'
+    stats['heures'] = stats['episodes'] * 24 // 60  # durée moyenne d'un épisode
     return render_template(
         'admin.html', stats=stats, comptes=comptes, compteurs=compteurs, recherche=recherche,
-        plus_suivis=[(a, titres.get(a, f"Animé n° {a}"), n) for a, n in plus_suivis],
+        top=top, top_max=max([t['n'] for t in top] or [1]),
     )
 
 
@@ -1383,6 +1391,8 @@ def admin_user(user_id):
     return render_template(
         'admin_user.html', compte=compte,
         progression=animes, favoris=[a for a in animes if a['favori']],
+        episodes=sum(int(a['current_episode'] or 0) for a in animes),
+        minutes=sum(a['watched_minutes'] for a in animes),
     )
 
 

@@ -4,19 +4,19 @@
 
 {% block contenu %}
 {{ titre("Panel", "admin") }}
+<p class="intro">Vue d'ensemble du site et de ses comptes.</p>
 
-<dl class="bilan">
-    <div><dt>Comptes</dt><dd>{{ stats.comptes }}</dd></div>
-    <div><dt>Vérifiés</dt><dd>{{ stats.verifies }}</dd></div>
-    <div><dt>Animés suivis</dt><dd>{{ stats.suivis }}</dd></div>
-    <div><dt>Favoris</dt><dd>{{ stats.favoris }}</dd></div>
-    <div><dt>Épisodes vus</dt><dd>{{ stats.episodes }}</dd></div>
+<dl class="tuiles">
+    <div class="tuile tuile--forte"><dt>Comptes</dt><dd>{{ stats.comptes }}</dd><p>{{ stats.verifies }} vérifié{{ 's' if stats.verifies > 1 }}</p></div>
+    <div class="tuile"><dt>Animés suivis</dt><dd>{{ stats.suivis }}</dd><p>{{ stats.par_compte }} par compte</p></div>
+    <div class="tuile"><dt>Favoris</dt><dd>{{ stats.favoris }}</dd></div>
+    <div class="tuile"><dt>Épisodes vus</dt><dd>{{ '{:,}'.format(stats.episodes) | replace(',', ' ') }}</dd><p>≈ {{ '{:,}'.format(stats.heures) | replace(',', ' ') }} h de visionnage</p></div>
 </dl>
 
 <div class="admin">
     <section aria-labelledby="titre-comptes">
         <div class="admin__tete">
-            <h2 class="sous-titre" id="titre-comptes">Comptes</h2>
+            <h2 class="sous-titre" id="titre-comptes">Comptes <span class="compteur">{{ comptes|length }}</span></h2>
             <form class="admin__recherche" action="{{ url_for('admin') }}" method="get" role="search">
                 <label class="sr-only" for="q">Chercher un compte</label>
                 <input id="q" type="search" name="q" value="{{ recherche }}" placeholder="Pseudo ou email" maxlength="150">
@@ -26,39 +26,52 @@
         </div>
 
         {% if comptes %}
-        <div class="tableau">
-            <table>
-                <thead>
-                    <tr><th scope="col">Pseudo</th><th scope="col">Email</th><th scope="col">Statut</th><th scope="col" class="nombre">Suivis</th><th scope="col" class="nombre">Favoris</th></tr>
-                </thead>
-                <tbody>
-                    {% for c in comptes %}
-                    {% set n, fav = compteurs.get(c.id, (0, 0)) %}
-                    <tr>
-                        <td><a href="{{ url_for('admin_user', user_id=c.id) }}">{{ c.username }}</a></td>
-                        <td>{{ c.email }}</td>
-                        <td>
-                            {% if c.is_admin %}<span class="etat etat--actif">Admin</span>{% endif %}
-                            {% if c.is_verified %}<span class="etat">Vérifié</span>{% else %}<span class="etat etat--attente">Non vérifié</span>{% endif %}
-                        </td>
-                        <td class="nombre">{{ n }}</td>
-                        <td class="nombre">{{ fav }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+        <ul class="comptes">
+            {% for c in comptes %}
+            {% set k = compteurs.get(c.id, {'suivis': 0, 'favoris': 0, 'episodes': 0}) %}
+            <li>
+                <a class="compte-ligne" href="{{ url_for('admin_user', user_id=c.id) }}">
+                    <span class="avatar{% if c.is_admin %} avatar--admin{% endif %}" aria-hidden="true">{{ c.username[:1] | upper }}</span>
+                    <span class="compte-ligne__nom">
+                        <b>{{ c.username }}</b>
+                        <span>{{ c.email }}</span>
+                    </span>
+                    {% if c.is_admin or not c.is_verified %}
+                    <span class="compte-ligne__etats">
+                        {% if c.is_admin %}<span class="etat etat--actif">Admin</span>{% endif %}
+                        {% if not c.is_verified %}<span class="etat etat--attente">Non vérifié</span>{% endif %}
+                    </span>
+                    {% else %}<span></span>{% endif %}
+                    <span class="compte-ligne__chiffres">
+                        <span><b>{{ k.suivis }}</b> suivis</span>
+                        <span><b>{{ k.favoris }}</b> favoris</span>
+                        <span><b>{{ k.episodes }}</b> ép.</span>
+                    </span>
+                    <span class="compte-ligne__fleche" aria-hidden="true">→</span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
         {% else %}
         <p class="vide">Aucun compte ne correspond à « {{ recherche }} ».</p>
         {% endif %}
     </section>
 
-    <section aria-labelledby="titre-top">
+    <section class="admin__cote" aria-labelledby="titre-top">
         <h2 class="sous-titre" id="titre-top">Les plus suivis</h2>
-        {% if plus_suivis %}
+        {% if top %}
         <ol class="classement">
-            {% for anime_id, titre_anime, n in plus_suivis %}
-            <li><a href="{{ url_for('detail_anime', mal_id=anime_id) }}">{{ titre_anime }}</a><span>{{ n }} compte{{ 's' if n > 1 }}</span></li>
+            {% for anime in top %}
+            <li>
+                <a href="{{ url_for('detail_anime', mal_id=anime.id) }}">
+                    <img src="{{ anime.image or url_for('static', filename='icon-192.png') }}" alt="" loading="lazy" width="44" height="66">
+                    <span class="classement__texte">
+                        <b>{{ anime.title }}</b>
+                        <span class="classement__barre" style="--part: {{ (anime.n / top_max * 100) | int }}%"><i></i></span>
+                        <span>{{ anime.n }} compte{{ 's' if anime.n > 1 }}</span>
+                    </span>
+                </a>
+            </li>
             {% endfor %}
         </ol>
         {% else %}
