@@ -190,7 +190,8 @@ gunicorn --workers 1 --threads 4 --timeout 90 --bind 127.0.0.1:8001 app:app
 
 ## À venir
 
-- [ ] Mot de passe oublié et changement de mot de passe
+- [x] Mot de passe oublié (code envoyé par email)
+- [ ] Changement de mot de passe depuis le compte
 - [ ] Page de paramètres
 - [ ] Suppression du compte et page de confidentialité
 
