@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% from "_macros.html" import titre %}
+{% block title %}Paramètres - MyAnimeProgress{% endblock %}
+
+{% block contenu %}
+{{ titre("Mes", "paramètres") }}
+<p class="intro">Connecté avec <strong>{{ current_user.email }}</strong>.</p>
+
+<div class="reglages">
+    <section class="reglage" aria-labelledby="titre-pseudo">
+        <h2 id="titre-pseudo">Nom d'utilisateur</h2>
+        <p>Le nom affiché sur ta page Progression.</p>
+        <form class="formulaire" action="{{ url_for('change_username') }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="champ">
+                <label for="username">Nom d'utilisateur (3 à 30 caractères)</label>
+                <input id="username" name="username" value="{{ current_user.username }}" minlength="3" maxlength="30" autocomplete="username" required>
+            </div>
+            <button type="submit" class="btn">Enregistrer le nom</button>
+        </form>
+    </section>
+
+    <section class="reglage" aria-labelledby="titre-mdp">
+        <h2 id="titre-mdp">Mot de passe</h2>
+        <p>Tes autres appareils seront déconnectés, celui-ci reste connecté.</p>
+        <form class="formulaire" action="{{ url_for('change_password') }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="champ">
+                <label for="current_password">Mot de passe actuel</label>
+                <input type="password" id="current_password" name="current_password" autocomplete="current-password" maxlength="128" required>
+            </div>
+            <div class="champ">
+                <label for="password">Nouveau mot de passe (8 caractères minimum)</label>
+                <input type="password" id="password" name="password" autocomplete="new-password" minlength="8" maxlength="128" required>
+            </div>
+            <div class="champ">
+                <label for="password_confirm">Confirme le nouveau mot de passe</label>
+                <input type="password" id="password_confirm" name="password_confirm" autocomplete="new-password" minlength="8" maxlength="128" required>
+            </div>
+            <button type="submit" class="btn">Changer le mot de passe</button>
+        </form>
+    </section>
+
+    <section class="reglage" aria-labelledby="titre-adulte">
+        <h2 id="titre-adulte">Contenu 18+</h2>
+        {% if adulte %}
+        <p><span class="etat etat--actif">Affiché</span> Les animés réservés aux adultes apparaissent dans le catalogue et la recherche.</p>
+        <form action="{{ url_for('change_adult') }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn--ligne" name="show" value="no">Masquer le contenu 18+</button>
+        </form>
+        {% else %}
+        <p><span class="etat">Masqué</span> Les animés réservés aux adultes n'apparaissent nulle part.</p>
+        <form class="formulaire" action="{{ url_for('change_adult') }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label class="coche"><input type="checkbox" name="confirm" value="yes" required> J'ai 18 ans ou plus</label>
+            <button type="submit" class="btn btn--ligne" name="show" value="yes">Afficher le contenu 18+</button>
+        </form>
+        {% endif %}
+        <p class="note">Ce choix vaut pour ce navigateur. Il est oublié à la déconnexion.</p>
+    </section>
+
+    <section class="reglage reglage--danger" aria-labelledby="titre-suppression">
+        <h2 id="titre-suppression">Supprimer mon compte</h2>
+        <p>Ton compte, ta progression et tes favoris seront effacés définitivement. Impossible de revenir en arrière.</p>
+        <form class="formulaire" action="{{ url_for('delete_account') }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="champ">
+                <label for="delete_password">Mot de passe</label>
+                <input type="password" id="delete_password" name="password" autocomplete="current-password" maxlength="128" required>
+            </div>
+            <label class="coche"><input type="checkbox" name="confirm" value="yes" required> Je comprends que tout sera supprimé</label>
+            <button type="submit" class="btn">Supprimer définitivement</button>
+        </form>
+    </section>
+</div>
+{% endblock %}

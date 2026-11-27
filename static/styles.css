@@ -299,6 +299,20 @@ button.lien-discret { background: none; border: 0; cursor: pointer; }
 .note { margin-top: 28px; color: var(--sourdine); font-size: .9375rem; max-width: 60ch; }
 .code input { font-size: 1.75rem; font-weight: 300; letter-spacing: .35em; font-variant-numeric: tabular-nums; }
 
+/* --- Paramètres ---------------------------------------------------------- */
+
+.reglages { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 24px; margin-top: 40px; align-items: start; }
+.reglage { display: grid; gap: 18px; padding: clamp(20px, 3vw, 32px); background: var(--noir-2); border: 1px solid var(--trait); }
+.reglage h2 { color: var(--blanc); font-size: 1.375rem; font-weight: 800; letter-spacing: -.01em; }
+.reglage > p { color: var(--sourdine); max-width: 60ch; }
+.reglage .note { margin-top: 0; }
+.reglage .btn { justify-self: start; }
+.reglage--danger { border-color: var(--rouge); box-shadow: inset 4px 0 0 var(--rouge); }
+.etat { display: inline-block; margin-right: 8px; padding: 2px 10px; border: 1px solid var(--trait-fort); color: var(--blanc); font-weight: 700; font-size: .875rem; }
+.etat--actif { background: var(--rouge-fond); border-color: var(--rouge-fond); }
+.coche { display: flex; align-items: center; gap: 12px; min-height: 44px; cursor: pointer; }
+.coche input { width: 22px; height: 22px; flex: none; accent-color: var(--rouge-fond); }
+
 /* --- Écrans plus étroits ------------------------------------------------- */
 
 @media (max-width: 1120px) {

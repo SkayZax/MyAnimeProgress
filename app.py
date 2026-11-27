@@ -1194,6 +1194,121 @@ def add_to_list():
     return redirect(fiche)
 
 
+# --- Paramètres -------------------------------------------------------------
+
+@app.route('/settings')
+@login_required
+def settings():
+    return render_template('settings.html', adulte=_age_verified())
+
+
+def _check_current_password(password: str) -> bool:
+    """Vérifie le mot de passe actuel, avec un nombre d'erreurs limité par compte."""
+    cle = f"settings:mdp:{current_user.id}"
+    if limiteur.trop(cle, 5, 15 * MINUTE):
+        flash("Trop d'essais avec un mauvais mot de passe. Réessaie dans 15 minutes.", "error")
+        return False
+    if len(password) <= MDP_MAX and check_password_hash(current_user.password, password):
+        limiteur.oublier(cle)
+        return True
+    limiteur.compter(cle, 15 * MINUTE)
+    flash("Mot de passe actuel incorrect.", "error")
+    return False
+
+
+@app.route('/settings/username', methods=['POST'])
+@login_required
+def change_username():
+    username = (request.form.get('username') or '').strip()
+    if username == current_user.username:
+        flash("C'est déjà ton nom d'utilisateur.", "info")
+    elif not 3 <= len(username) <= 30:
+        flash("Le nom d'utilisateur doit faire entre 3 et 30 caractères.", "error")
+    elif User.query.filter(db.func.lower(User.username) == username.lower(), User.id != current_user.id).first():
+        flash("Ce nom d'utilisateur est déjà pris. Choisis-en un autre.", "error")
+    else:
+        current_user.username = username
+        try:
+            db.session.commit()
+            flash("Nom d'utilisateur modifié.", "success")
+        except IntegrityError:
+            db.session.rollback()  # pris au même instant par quelqu'un d'autre
+            flash("Ce nom d'utilisateur est déjà pris. Choisis-en un autre.", "error")
+    return redirect(url_for('settings'))
+
+
+@app.route('/settings/password', methods=['POST'])
+@login_required
+def change_password():
+    actuel = request.form.get('current_password') or ''
+    password = request.form.get('password') or ''
+    confirmation = request.form.get('password_confirm') or ''
+    if not _check_current_password(actuel):
+        return redirect(url_for('settings'))
+
+    if not MDP_MIN <= len(password) <= MDP_MAX:
+        erreur = f"Le nouveau mot de passe doit faire au moins {MDP_MIN} caractères."
+    elif password != confirmation:
+        erreur = "Les deux mots de passe ne sont pas identiques."
+    elif password == actuel:
+        erreur = "Le nouveau mot de passe doit être différent de l'actuel."
+    elif mot_de_passe_trop_courant(password, current_user.username, current_user.email):
+        erreur = "Ce mot de passe est trop facile à deviner. Choisis-en un autre."
+    else:
+        erreur = None
+    if erreur:
+        flash(erreur, "error")
+        return redirect(url_for('settings'))
+
+    current_user.password = generate_password_hash(password, method='pbkdf2:sha256')
+    # Déconnecte les autres appareils, garde celui-ci
+    OpenSession.query.filter(
+        OpenSession.user_id == current_user.id,
+        OpenSession.id != _hash_token(session.get('sid', '')),
+    ).delete()
+    db.session.commit()
+    flash("Mot de passe modifié. Tes autres appareils ont été déconnectés.", "success")
+    return redirect(url_for('settings'))
+
+
+@app.route('/settings/adult', methods=['POST'])
+@login_required
+def change_adult():
+    if request.form.get('show') == 'yes':
+        if request.form.get('confirm') != 'yes':
+            flash("Coche la case pour confirmer que tu as 18 ans ou plus.", "error")
+            return redirect(url_for('settings'))
+        session['age_verified'] = True
+        flash("Le contenu 18+ est maintenant affiché.", "success")
+    else:
+        session.pop('age_verified', None)
+        flash("Le contenu 18+ est de nouveau masqué.", "success")
+    return redirect(url_for('settings'))
+
+
+@app.route('/settings/delete', methods=['POST'])
+@login_required
+def delete_account():
+    if request.form.get('confirm') != 'yes':
+        flash("Coche la case pour confirmer la suppression.", "error")
+        return redirect(url_for('settings'))
+    if not _check_current_password(request.form.get('password') or ''):
+        return redirect(url_for('settings'))
+
+    user_id = current_user.id
+    Useranime.query.filter_by(user_id=user_id).delete()
+    OpenSession.query.filter_by(user_id=user_id).delete()
+    User.query.filter_by(id=user_id).delete()
+    db.session.commit()
+    limiteur.oublier(f"settings:mdp:{user_id}")
+    logout_user()
+    session.clear()
+    flash("Ton compte et ta progression ont été supprimés.", "success")
+    resp = redirect(url_for('index'))
+    resp.delete_cookie(COOKIE_APPAREIL)
+    return resp
+
+
 def init_db() -> None:
     """Crée les tables et ajoute les colonnes manquantes (migration légère, sans Alembic)."""
     ajouts = {
