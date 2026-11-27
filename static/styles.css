@@ -206,6 +206,10 @@ button.lien-discret { background: none; border: 0; cursor: pointer; }
 .affiche:hover .affiche__image::after, .affiche:focus-visible .affiche__image::after { transform: none; }
 .affiche:hover img { opacity: .82; }
 .affiche__age { position: absolute; left: 0; top: 0; background: var(--noir); color: var(--blanc); font-size: .8125rem; font-weight: 700; padding: 3px 9px; }
+/* Accueil : classement par popularité */
+.grille--classement { list-style: none; margin: 0; padding: 0; }
+.affiche__rang { position: absolute; left: 0; bottom: 0; min-width: 44px; padding: 6px 10px 4px; background: var(--noir); color: var(--blanc); font-size: 1.375rem; font-weight: 800; line-height: 1; letter-spacing: -.02em; text-align: center; font-variant-numeric: tabular-nums; }
+.affiche__rang--podium { background: var(--rouge-fond); }
 .affiche h2, .affiche h3 { margin-top: 12px; color: var(--blanc); font-size: 1.0625rem; font-weight: 700; line-height: 1.28; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .affiche p { margin-top: 4px; color: var(--sourdine); font-size: .9375rem; line-height: 1.4; }
 .affiche .barre { margin-top: 12px; }

@@ -51,6 +51,11 @@ class API:
     def gettitlefromjson(self,anime_json: dict) -> str:
         return anime_json["data"]["title"]
 
+    def get_popular(self, page: int = 1) -> list:
+        """Animés classés par popularité (nombre de membres sur MyAnimeList)."""
+        data = self._get(self.url_api.rsplit("/", 1)[0] + "/top/anime", {"filter": "bypopularity", "page": page})
+        return data.get("data", [])
+
     def get_animepage(self,page: int=1)->list:
         data = self._get(self.url_api, {"page": page})
         return data.get("data",[])

@@ -26,7 +26,7 @@
             <a class="logo" href="{{ url_for('index') }}" aria-label="MyAnimeProgress, accueil"><b>MyAnime</b><span>Progress</span></a>
 
             {% block recherche %}
-            <form class="recherche" action="{{ url_for('index') }}" method="get" role="search">
+            <form class="recherche" action="{{ url_for('catalogue') }}" method="get" role="search">
                 <label class="sr-only" for="recherche">Rechercher un animé</label>
                 <input id="recherche" type="search" name="search" placeholder="Rechercher un animé" value="{{ request.args.get('search', '') }}">
                 <button type="submit" aria-label="Lancer la recherche">
@@ -37,7 +37,7 @@
 
             {% if current_user.is_authenticated %}
             <nav class="menu" aria-label="Navigation principale">
-                <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}aria-current="page"{% endif %}>Catalogue</a>
+                <a href="{{ url_for('catalogue') }}" {% if request.endpoint == 'catalogue' %}aria-current="page"{% endif %}>Catalogue</a>
                 <a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}aria-current="page"{% endif %}>Progression</a>
                 <a href="{{ url_for('favorites') }}" {% if request.endpoint == 'favorites' %}aria-current="page"{% endif %}>Favoris</a>
                 <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}aria-current="page"{% endif %}>Paramètres</a>

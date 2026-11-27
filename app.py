@@ -311,135 +311,113 @@ def _open_session(user) -> None:
     login_user(user)
 
 
+# Genres de l'API (identifiants MyAnimeList)
+GENRES = {
+    'Action': 1,
+    'Adventure': 2,
+    'Avant Garde': 5,
+    'Award Winning': 46,
+    'Boys Love': 28,
+    'Comedy': 4,
+    'Drama': 8,
+    'Ecchi': 9,
+    'Erotica': 49,
+    'Fantasy': 10,
+    'Girls Love': 26,
+    'Gourmet': 47,
+    'Harem': 35,
+    'Hentai': 12,
+    'Historical': 13,
+    'Horror': 14,
+    'Josei': 43,
+    'Kids': 15,
+    'Martial Arts': 17,
+    'Mecha': 18,
+    'Military': 38,
+    'Music': 19,
+    'Mystery': 7,
+    'Mythology': 6,
+    'Parody': 20,
+    'Police': 39,
+    'Psychological': 40,
+    'Racing': 3,
+    'Romance': 22,
+    'Samurai': 21,
+    'School': 23,
+    'Sci-Fi': 24,
+    'Seinen': 42,
+    'Shoujo': 25,
+    'Shounen': 27,
+    'Slice of Life': 36,
+    'Space': 29,
+    'Sports': 30,
+    'Strategy Game': 11,
+    'Super Power': 31,
+    'Supernatural': 37,
+    'Suspense': 41,
+    'Vampire': 32,
+    'Work Life': 48,
+}
+
+
+def _sans_adulte(animes: list) -> tuple[list, int]:
+    """Retire le contenu adulte tant que l'âge n'est pas confirmé. Renvoie (animés, nombre masqués)."""
+    if _age_verified():
+        return animes, 0
+    gardes = [a for a in animes if not _anime_is_adult(a)]
+    return gardes, len(animes) - len(gardes)
+
+
 @app.route("/", methods=["GET"])
 def index():
-    page = request.args.get('page', 1, type=int)
-    genre_name = request.args.get('genres', type=str)
-    search_query = request.args.get('search', type=str)
+    """Accueil : les animés les plus populaires selon l'API."""
+    # Anciens liens de recherche ou de genre : ils vivent maintenant sur le catalogue
+    if request.args.get('search') or request.args.get('genres'):
+        return redirect(url_for('catalogue', **request.args))
+    page = max(1, min(request.args.get('page', 1, type=int), 1000))
+    recus = api.get_popular(page)
+    animes, masques = _sans_adulte(recus)
+    return render_template(
+        "index.html",
+        animes=animes,
+        masques=masques,
+        page_pleine=len(recus) > 0,
+        current_page=page,
+        rang_depart=(page - 1) * 25,
+        age_verified=_age_verified(),
+    )
 
-    # Nettoyage des champs (évite les recherches " " et valeurs None)
-    if genre_name:
-        genre_name = genre_name.strip()
-    if search_query:
-        search_query = search_query.strip()
 
-    title = "MyAnimeProgress"
+@app.route("/catalogue", methods=["GET"])
+def catalogue():
+    """Tous les animés, avec recherche et filtre par genre."""
+    page = max(1, min(request.args.get('page', 1, type=int), 2000))
+    genre_name = (request.args.get('genres') or '').strip()
+    search_query = (request.args.get('search') or '').strip()
 
     # Par défaut, on masque le contenu adulte tant que l'âge n'est pas confirmé.
     if genre_name in ADULT_GENRES and not _age_verified():
         flash("Ce genre contient du contenu adulte. Confirme que tu as 18+ pour continuer.", "warning")
         return redirect(url_for("age_gate", next=request.full_path))
 
-    # IMPORTANT: logique exclusive.
-    # Priorité à la recherche, sinon filtre genre, sinon liste par défaut.
+    # Priorité à la recherche, sinon filtre genre, sinon liste complète.
     if search_query:
-        animes = api.search_anime(search_query, page)
-        title = f"Résultats pour : {search_query}"
-    elif genre_name == 'Action':
-        animes = api.get_animes_by_genre(genre_id=1, page=page)
-    elif genre_name == 'Adventure':
-        animes = api.get_animes_by_genre(genre_id=2, page=page)
-    elif genre_name == 'Racing':
-        animes = api.get_animes_by_genre(genre_id=3, page=page)
-    elif genre_name == 'Comedy':
-        animes = api.get_animes_by_genre(genre_id=4, page=page)
-    elif genre_name == 'Avant Garde':
-        animes = api.get_animes_by_genre(genre_id=5, page=page)
-    elif genre_name == 'Mythology':
-        animes = api.get_animes_by_genre(genre_id=6, page=page)
-    elif genre_name == 'Mystery':
-        animes = api.get_animes_by_genre(genre_id=7, page=page)
-    elif genre_name == 'Drama':
-        animes = api.get_animes_by_genre(genre_id=8, page=page)
-    elif genre_name == 'Ecchi':
-        animes = api.get_animes_by_genre(genre_id=9, page=page)
-    elif genre_name == 'Fantasy':
-        animes = api.get_animes_by_genre(genre_id=10, page=page)
-    elif genre_name == 'Strategy Game':
-        animes = api.get_animes_by_genre(genre_id=11, page=page)
-    elif genre_name == 'Hentai':
-        animes = api.get_animes_by_genre(genre_id=12, page=page)
-    elif genre_name == 'Historical':
-        animes = api.get_animes_by_genre(genre_id=13, page=page)
-    elif genre_name == 'Horror':
-        animes = api.get_animes_by_genre(genre_id=14, page=page)
-    elif genre_name == 'Kids':
-        animes = api.get_animes_by_genre(genre_id=15, page=page)
-    elif genre_name == 'Martial Arts':
-        animes = api.get_animes_by_genre(genre_id=17, page=page)
-    elif genre_name == 'Mecha':
-        animes = api.get_animes_by_genre(genre_id=18, page=page)
-    elif genre_name == 'Music':
-        animes = api.get_animes_by_genre(genre_id=19, page=page)
-    elif genre_name == 'Parody':
-        animes = api.get_animes_by_genre(genre_id=20, page=page)
-    elif genre_name == 'Samurai':
-        animes = api.get_animes_by_genre(genre_id=21, page=page)
-    elif genre_name == 'Romance':
-        animes = api.get_animes_by_genre(genre_id=22, page=page)
-    elif genre_name == 'School':
-        animes = api.get_animes_by_genre(genre_id=23, page=page)
-    elif genre_name == 'Sci-Fi':
-        animes = api.get_animes_by_genre(genre_id=24, page=page)
-    elif genre_name == 'Shoujo':
-        animes = api.get_animes_by_genre(genre_id=25, page=page)
-    elif genre_name == 'Girls Love':
-        animes = api.get_animes_by_genre(genre_id=26, page=page)
-    elif genre_name == 'Shounen':
-        animes = api.get_animes_by_genre(genre_id=27, page=page)
-    elif genre_name == 'Boys Love':
-        animes = api.get_animes_by_genre(genre_id=28, page=page)
-    elif genre_name == 'Space':
-        animes = api.get_animes_by_genre(genre_id=29, page=page)
-    elif genre_name == 'Sports':
-        animes = api.get_animes_by_genre(genre_id=30, page=page)
-    elif genre_name == 'Super Power':
-        animes = api.get_animes_by_genre(genre_id=31, page=page)
-    elif genre_name == 'Vampire':
-        animes = api.get_animes_by_genre(genre_id=32, page=page)
-    elif genre_name == 'Harem':
-        animes = api.get_animes_by_genre(genre_id=35, page=page)
-    elif genre_name == 'Slice of Life':
-        animes = api.get_animes_by_genre(genre_id=36, page=page)
-    elif genre_name == 'Supernatural':
-        animes = api.get_animes_by_genre(genre_id=37, page=page)
-    elif genre_name == 'Military':
-        animes = api.get_animes_by_genre(genre_id=38, page=page)
-    elif genre_name == 'Police':
-        animes = api.get_animes_by_genre(genre_id=39, page=page)
-    elif genre_name == 'Psychological':
-        animes = api.get_animes_by_genre(genre_id=40, page=page)
-    elif genre_name == 'Suspense':
-        animes = api.get_animes_by_genre(genre_id=41, page=page)
-    elif genre_name == 'Seinen':
-        animes = api.get_animes_by_genre(genre_id=42, page=page)
-    elif genre_name == 'Josei':
-        animes = api.get_animes_by_genre(genre_id=43, page=page)
-    elif genre_name == 'Award Winning':
-        animes = api.get_animes_by_genre(genre_id=46, page=page)
-    elif genre_name == 'Gourmet':
-        animes = api.get_animes_by_genre(genre_id=47, page=page)
-    elif genre_name == 'Work Life':
-        animes = api.get_animes_by_genre(genre_id=48, page=page)
-    elif genre_name == 'Erotica':
-        animes = api.get_animes_by_genre(genre_id=49, page=page)
-
+        recus = api.search_anime(search_query, page)
+    elif genre_name in GENRES:
+        recus = api.get_animes_by_genre(genre_id=GENRES[genre_name], page=page)
     else:
-        animes = api.get_animepage(page)
+        recus = api.get_animepage(page)
 
-    recus = len(animes)
-    if not _age_verified():
-        animes = [a for a in animes if not _anime_is_adult(a)]
-
+    animes, masques = _sans_adulte(recus)
     return render_template(
-        "index.html",
+        "catalogue.html",
         animes=animes,
-        masques=recus - len(animes),
-        page_pleine=recus > 0,
+        masques=masques,
+        page_pleine=len(recus) > 0,
         current_page=page,
-        title=title,
         age_verified=_age_verified(),
         adult_genres=sorted(ADULT_GENRES),
+        genres=sorted(GENRES),
     )
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)

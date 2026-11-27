@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% from "_macros.html" import titre, barre %}
+{% set recherche = (request.args.get('search') or '')|trim %}
+{% set genre = (request.args.get('genres') or '')|trim if not recherche else '' %}
+
+{% block title %}{% if recherche %}Résultats pour {{ recherche }} - {% elif genre %}{{ genre }} - {% else %}Catalogue - {% endif %}MyAnimeProgress{% endblock %}
+
+{% block contenu %}
+<div class="catalogue__tete">
+    {% if recherche %}
+    {{ titre("Résultats pour", recherche) }}
+    {% elif genre %}
+    {{ titre("Genre", genre) }}
+    {% else %}
+    {{ titre("Tous les", "animés") }}
+    {% endif %}
+
+    <div class="outils">
+        {% if recherche or genre %}
+        <a class="btn btn--ligne btn--petit" href="{{ url_for('catalogue') }}">Tout afficher</a>
+        {% endif %}
+        {% if age_verified %}
+        <form action="{{ url_for('revoke_age_gate') }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn--ligne btn--petit" type="submit">Masquer le contenu 18+</button>
+        </form>
+        {% else %}
+        <a class="btn btn--ligne btn--petit" href="{{ url_for('age_gate', next=request.full_path) }}">Afficher le contenu 18+</a>
+        {% endif %}
+    </div>
+</div>
+
+<details class="genres">
+    <summary>{% if genre %}Changer de genre{% else %}Filtrer par genre{% endif %}</summary>
+    <ul>
+        {% for g in genres %}
+        <li><a href="{{ url_for('catalogue', genres=g) }}" {% if g == genre %}aria-current="true"{% endif %}>{{ g }}{% if g in adult_genres and not age_verified %}<span class="age">18+</span>{% endif %}</a></li>
+        {% endfor %}
+    </ul>
+</details>
+
+{% if masques %}
+<p class="intro masques">{% if masques == 1 %}1 animé 18+ est masqué{% else %}{{ masques }} animés 18+ sont masqués{% endif %} sur cette page. <a href="{{ url_for('age_gate', next=request.full_path) }}">Les afficher</a></p>
+{% endif %}
+{% if animes %}
+<section class="grille" aria-label="Animés">
+    {% for anime in animes %}
+    <a class="affiche" href="{{ url_for('detail_anime', mal_id=anime['mal_id']) }}">
+        <div class="affiche__image">
+            <img src="{{ anime['images']['jpg']['large_image_url'] or anime['images']['jpg']['image_url'] }}" alt="" loading="lazy" width="300" height="450">
+            {% if anime['rating'] %}<span class="affiche__age" title="{{ anime['rating'] }}"><span class="sr-only">Classification : </span>{{ anime['rating'].split(' - ')[0] }}</span>{% endif %}
+        </div>
+        <h2>{{ anime['title'] }}</h2>
+        <p>{{ anime['genres'] | map(attribute='name') | join(', ') }}</p>
+    </a>
+    {% endfor %}
+</section>
+{% elif not masques %}
+<div class="vide">
+    <p>{% if recherche %}Aucun animé ne correspond à «&nbsp;{{ recherche }}&nbsp;». Essaie le titre original ou un mot plus court.{% else %}Il n'y a rien sur cette page.{% endif %}</p>
+    <a class="btn" href="{{ url_for('catalogue') }}">Voir tous les animés</a>
+</div>
+{% endif %}
+
+<nav class="pagination" aria-label="Pages">
+    {% if current_page > 1 %}
+    <a class="btn btn--ligne" href="{{ url_for('catalogue', page=current_page - 1, genres=genre or none, search=recherche or none) }}">Page précédente</a>
+    {% endif %}
+    <strong>Page {{ current_page }}</strong>
+    {% if page_pleine %}
+    <a class="btn btn--ligne" href="{{ url_for('catalogue', page=current_page + 1, genres=genre or none, search=recherche or none) }}">Page suivante</a>
+    {% endif %}
+</nav>
+{% endblock %}

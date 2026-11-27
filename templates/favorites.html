@@ -8,7 +8,7 @@
 {% if animes|length == 0 %}
 <div class="vide">
     <p>Tu n'as pas encore de favori. Ouvre la fiche d'un animé et choisis «&nbsp;Ajouter aux favoris&nbsp;».</p>
-    <a class="btn" href="{{ url_for('index') }}">Parcourir le catalogue</a>
+    <a class="btn" href="{{ url_for('catalogue') }}">Parcourir le catalogue</a>
 </div>
 {% else %}
 <section class="grille" aria-label="Favoris">
