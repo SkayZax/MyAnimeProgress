@@ -134,6 +134,10 @@ button.lien-discret { background: none; border: 0; cursor: pointer; }
 
 .champ { display: grid; gap: 8px; }
 .champ label { font-weight: 500; }
+/* Libellé avec un lien à droite (ex. « Mot de passe oublié ? ») */
+.champ__tete { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px; }
+.champ__tete a { color: var(--sourdine); font-size: .9375rem; text-underline-offset: 4px; }
+.champ__tete a:hover { color: var(--blanc); text-decoration-color: var(--rouge); }
 .champ input, .champ-nombre {
     width: 100%; min-height: 50px; padding: 10px 14px;
     background: var(--noir); border: 1px solid var(--trait-fort); color: var(--blanc);

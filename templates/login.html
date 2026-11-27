@@ -16,13 +16,14 @@
             <input type="email" id="email" name="email" autocomplete="email" required>
         </div>
         <div class="champ">
-            <label for="password">Mot de passe</label>
+            <div class="champ__tete">
+                <label for="password">Mot de passe</label>
+                <a href="{{ url_for('forgot_password') }}">Mot de passe oublié ?</a>
+            </div>
             <input type="password" id="password" name="password" autocomplete="current-password" required>
         </div>
         <button type="submit" class="btn btn--large">Se connecter</button>
     </form>
-    {# À venir : réinitialisation du mot de passe #}
-    <p><a href="#">Mot de passe oublié ?</a></p>
     <p>Pas encore de compte ? <a href="{{ url_for('register') }}">S'inscrire</a></p>
 </div>
 {% endblock %}

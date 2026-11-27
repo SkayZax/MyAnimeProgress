@@ -13,6 +13,7 @@ import hashlib
 import os
 import re
 import secrets
+import threading
 from datetime import datetime, timedelta
 from flask_mail import Mail, Message
 from itsdangerous import BadSignature, URLSafeTimedSerializer
@@ -449,6 +450,10 @@ class User(UserMixin, db.Model):
     verification_expires_at = db.Column(db.DateTime, nullable=True)
     # Change à chaque inscription : lie le code à la personne qui a choisi le mot de passe
     verification_nonce = db.Column(db.String(32), nullable=True)
+    # Mot de passe oublié : code envoyé par email, lié à la session qui l'a demandé
+    reset_code = db.Column(db.String(6), nullable=True)
+    reset_expires_at = db.Column(db.DateTime, nullable=True)
+    reset_nonce = db.Column(db.String(32), nullable=True)
 
 
 class OpenSession(db.Model):
@@ -473,7 +478,23 @@ def _generate_verification_code() -> str:
     return f"{secrets.randbelow(1_000_000):06d}"
 
 
-def _send_verification_email(to_email: str, code: str) -> None:
+_EMAILS = {
+    'verification': {
+        'sujet': 'Votre code de vérification MyAnimeProgress',
+        'titre': 'Vérifie ton compte',
+        'intro': 'Voici ton code de vérification',
+        'texte': 'Votre code de vérification MyAnimeProgress est',
+    },
+    'reset': {
+        'sujet': 'Réinitialisation de votre mot de passe MyAnimeProgress',
+        'titre': 'Change ton mot de passe',
+        'intro': 'Voici ton code pour choisir un nouveau mot de passe',
+        'texte': 'Votre code de réinitialisation MyAnimeProgress est',
+    },
+}
+
+
+def _send_verification_email(to_email: str, code: str, motif: str = 'verification') -> None:
     """Envoie un email de vérification via Brevo (Sendinblue) API.
 
     Configuration via variables d'environnement:
@@ -501,6 +522,8 @@ def _send_verification_email(to_email: str, code: str) -> None:
         'content-type': 'application/json',
     }
 
+    textes = _EMAILS[motif]
+
     # Petit template HTML “propre” (sans images externes obligatoires), compatible clients mail.
     html_content = f"""\
 <!doctype html>
@@ -508,7 +531,7 @@ def _send_verification_email(to_email: str, code: str) -> None:
   <head>
     <meta charset=\"utf-8\">
     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
-    <title>Code de vérification</title>
+    <title>{textes['sujet']}</title>
   </head>
   <body style=\"margin:0;padding:0;background:#f4f6fb;font-family:Arial,Helvetica,sans-serif;color:#111827;\">
     <div style=\"max-width:560px;margin:0 auto;padding:24px;\">
@@ -518,9 +541,9 @@ def _send_verification_email(to_email: str, code: str) -> None:
         </div>
 
         <div style=\"padding:22px 20px 10px 20px;\">
-          <h1 style=\"margin:0 0 12px 0;font-size:18px;line-height:1.35;\">Vérifie ton compte</h1>
+          <h1 style=\"margin:0 0 12px 0;font-size:18px;line-height:1.35;\">{textes['titre']}</h1>
           <p style=\"margin:0 0 14px 0;font-size:14px;line-height:1.6;color:#374151;\">
-            Voici ton code de vérification (valide <strong>15 minutes</strong>) :
+            {textes['intro']} (valide <strong>15 minutes</strong>) :
           </p>
 
           <div style=\"text-align:center;margin:18px 0 16px 0;\">
@@ -545,7 +568,7 @@ def _send_verification_email(to_email: str, code: str) -> None:
 """
 
     text_content = (
-        f"Votre code de vérification MyAnimeProgress est : {code}\n\n"
+        f"{textes['texte']} : {code}\n\n"
         "Ce code expire dans 15 minutes.\n"
         "Si vous n'êtes pas à l'origine de cette demande, ignorez cet email."
     )
@@ -565,7 +588,7 @@ def _send_verification_email(to_email: str, code: str) -> None:
         payload = {
             'sender': {'email': from_email, 'name': from_name},
             'to': [{'email': to_email}],
-            'subject': 'Votre code de vérification MyAnimeProgress',
+            'subject': textes['sujet'],
             'textContent': text_content,
             'htmlContent': html_content,
         }
@@ -889,6 +912,127 @@ def resend_code():
     return redirect(url_for('verify'))
 
 
+# --- Mot de passe oublié ---
+# La réponse est la même que l'email soit inscrit ou non : on ne révèle pas qui a un compte.
+
+def _send_reset_email(to_email: str, code: str) -> None:
+    """Envoie le code en arrière-plan : la page répond aussi vite, qu'il y ait un compte ou non."""
+    def envoyer():
+        try:
+            _send_verification_email(to_email, code, 'reset')
+        except Exception as e:
+            app.logger.error("Envoi du code de réinitialisation impossible : %s", e)
+            if _dev_should_show_code():
+                app.logger.warning("Code DEV de réinitialisation pour %s : %s", to_email, code)
+
+    threading.Thread(target=envoyer, daemon=True).start()
+
+
+def _reset_request():
+    """(email, compte) de la demande en cours dans cette session. Compte None si la demande n'est pas valable."""
+    email, nonce = session.get('reset') or (None, None)
+    user = _find_user(email) if email else None
+    valable = user and user.is_verified and user.reset_nonce and secrets.compare_digest(user.reset_nonce, nonce or '')
+    return email, (user if valable else None)
+
+
+def _clear_reset(user) -> None:
+    user.reset_code = None
+    user.reset_expires_at = None
+    user.reset_nonce = None
+
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    if request.method == 'POST':
+        if not limiteur.autoriser(f"reset:envoi-ip:{request.remote_addr}", 10, HEURE):
+            return _too_many()
+
+        email = _normalize_email(request.form.get('email'))
+        if len(email) > 150 or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+            flash("L'adresse email n'est pas valide.", "error")
+            return render_template('forgot_password.html')
+
+        nonce = secrets.token_hex(16)
+        session['reset'] = [email, nonce]
+        user = _find_user(email)
+        # Compté par email : personne ne peut inonder la boîte de quelqu'un d'autre
+        if user and user.is_verified and limiteur.autoriser(f"reset:envoi:{email}", 4, HEURE):
+            user.reset_code = _generate_verification_code()
+            user.reset_expires_at = datetime.utcnow() + timedelta(minutes=15)
+            user.reset_nonce = nonce
+            db.session.commit()
+            limiteur.oublier(f"reset:essai:{email}")
+            _send_reset_email(user.email, user.reset_code)
+
+        flash("Si un compte existe avec cette adresse, un code vient d'y être envoyé.", "success")
+        return redirect(url_for('reset_password'))
+
+    return render_template('forgot_password.html')
+
+
+@app.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+
+    email, user = _reset_request()
+    if not email:
+        return redirect(url_for('forgot_password'))
+
+    if request.method == 'POST':
+        code = (request.form.get('code') or '').strip()
+        password = request.form.get('password') or ''
+        confirmation = request.form.get('password_confirm') or ''
+
+        essais = f"reset:essai:{email}"
+        if not limiteur.autoriser(essais, 5, 15 * MINUTE):
+            if user:
+                _clear_reset(user)  # trop d'erreurs : ce code ne vaut plus rien
+                db.session.commit()
+            flash("Trop d'essais. Demande un nouveau code.", "error")
+            return redirect(url_for('forgot_password'))
+
+        code_valide = (
+            user and user.reset_code and user.reset_expires_at
+            and user.reset_expires_at >= datetime.utcnow()
+            and secrets.compare_digest(code.encode(), user.reset_code.encode())
+        )
+        if not code_valide:
+            flash("Code incorrect ou expiré.", "error")
+            return redirect(url_for('reset_password'))
+
+        if not MDP_MIN <= len(password) <= MDP_MAX:
+            erreur = f"Le mot de passe doit faire au moins {MDP_MIN} caractères."
+        elif password != confirmation:
+            erreur = "Les deux mots de passe ne sont pas identiques."
+        elif mot_de_passe_trop_courant(password, user.username, user.email):
+            erreur = "Ce mot de passe est trop facile à deviner. Choisis-en un autre."
+        else:
+            erreur = None
+        if erreur:
+            # Le code reste valable : seule la saisie du mot de passe est à refaire
+            limiteur.oublier(essais)
+            flash(erreur, "error")
+            return render_template('reset_password.html', email=email, code=code)
+
+        user.password = generate_password_hash(password, method='pbkdf2:sha256')
+        _clear_reset(user)
+        # Déconnecte tous les appareils : quelqu'un connaissait peut-être l'ancien mot de passe
+        OpenSession.query.filter_by(user_id=user.id).delete()
+        db.session.commit()
+        session.pop('reset', None)
+        limiteur.oublier(essais)
+        limiteur.oublier(f"login:compte:{email}")
+
+        flash("Mot de passe modifié. Tu peux te connecter.", "success")
+        return redirect(url_for('login'))
+
+    return render_template('reset_password.html', email=email)
+
+
 @app.route("/dashboard")
 @login_required
 def dashboard():
@@ -1036,6 +1180,9 @@ def init_db() -> None:
             'verification_code': 'VARCHAR(6)',
             'verification_expires_at': 'DATETIME',
             'verification_nonce': 'VARCHAR(32)',
+            'reset_code': 'VARCHAR(6)',
+            'reset_expires_at': 'DATETIME',
+            'reset_nonce': 'VARCHAR(32)',
         },
     }
     db.create_all()
