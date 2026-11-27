@@ -368,6 +368,24 @@ def _sans_adulte(animes: list) -> tuple[list, int]:
     return gardes, len(animes) - len(gardes)
 
 
+def _a_reprendre(limite: int = 6) -> list:
+    """Animés commencés et pas finis, les plus récents d'abord. Lit la base seulement, jamais l'API."""
+    entries = (
+        Useranime.query.filter(Useranime.user_id == current_user.id, Useranime.current_episode > 0)
+        .order_by(Useranime.id.desc()).limit(40).all()
+    )
+    infos = {i.id: i for i in AnimeInfo.query.filter(AnimeInfo.id.in_([e.anime_id for e in entries]))} if entries else {}
+    vues = []
+    for e in entries:
+        vue = _entry_view(e, infos.get(e.anime_id))
+        total = vue['total_episode']
+        if e.anime_id in infos and not (total and vue['current_episode'] >= total):
+            vues.append(vue)
+        if len(vues) == limite:
+            break
+    return vues
+
+
 @app.route("/", methods=["GET"])
 def index():
     """Accueil : les animés les plus populaires selon l'API."""
@@ -384,7 +402,9 @@ def index():
     return render_template(
         "index.html",
         liste=liste,
-        animes=animes,
+        reprendre=_a_reprendre() if current_user.is_authenticated and page == 1 else [],
+        podium=animes[:3] if page == 1 else [],
+        animes=animes[3:] if page == 1 else animes,
         masques=masques,
         page_pleine=len(recus) > 0,
         current_page=page,

@@ -210,10 +210,44 @@ button.lien-discret { background: none; border: 0; cursor: pointer; }
 .grille--classement { list-style: none; margin: 0; padding: 0; }
 .affiche__rang { position: absolute; left: 0; bottom: 0; min-width: 44px; padding: 6px 10px 4px; background: var(--noir); color: var(--blanc); font-size: 1.375rem; font-weight: 800; line-height: 1; letter-spacing: -.02em; text-align: center; font-variant-numeric: tabular-nums; }
 .affiche__rang--podium { background: var(--rouge-fond); }
-.onglets { display: flex; gap: 28px; margin-bottom: 28px; border-bottom: 1px solid var(--trait); }
-.onglets a { position: relative; padding: 12px 0; color: var(--sourdine); font-size: 1.0625rem; font-weight: 700; text-decoration: none; }
-.onglets a:hover, .onglets a[aria-current] { color: var(--blanc); }
-.onglets a[aria-current]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 4px; background: var(--rouge); }
+.onglets { display: flex; gap: 4px; padding: 4px; background: var(--noir-2); border: 1px solid var(--trait); }
+.onglets a { padding: 9px 20px; color: var(--sourdine); font-weight: 700; text-decoration: none; transition: background-color .15s, color .15s; }
+.onglets a:hover { color: var(--blanc); }
+.onglets a[aria-current] { background: var(--rouge-fond); color: var(--blanc); }
+.affiche__note { position: absolute; right: 0; top: 0; padding: 3px 8px; background: var(--noir); color: var(--blanc); font-size: .8125rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.affiche__note::before { content: "★ "; color: var(--rouge); }
+
+.accueil__tete { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px 24px; margin-bottom: 28px; }
+.accueil__titre { margin-bottom: 32px; }
+.accueil__titre .intro { margin-top: 14px; }
+
+/* Reprendre (connecté) */
+.reprendre { margin-bottom: clamp(40px, 5vw, 64px); }
+.reprendre__tete { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 24px; margin-bottom: 16px; }
+.reprendre__tete .sous-titre { margin: 0; }
+.reprendre__liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.carte-reprise { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 16px; align-items: center; padding: 10px 16px 10px 10px; background: var(--noir-2); border: 1px solid var(--trait); text-decoration: none; color: inherit; transition: border-color .15s; }
+.carte-reprise:hover, .carte-reprise:focus-visible { border-color: var(--blanc); }
+.carte-reprise img { width: 64px; height: 96px; object-fit: cover; background: var(--noir-3); }
+.carte-reprise__texte { display: grid; gap: 6px; min-width: 0; }
+.carte-reprise__texte b { color: var(--blanc); line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.carte-reprise__texte > span:not(.barre) { color: var(--sourdine); font-size: .875rem; }
+.carte-reprise .barre { height: 6px; margin-top: 4px; }
+
+/* Top 3 */
+.podium { list-style: none; margin: 0 0 48px; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.podium__carte { position: relative; display: grid; grid-template-columns: minmax(0, 44%) minmax(0, 1fr); height: 100%; background: var(--noir-2); border: 1px solid var(--trait); text-decoration: none; color: inherit; overflow: hidden; transition: border-color .15s; }
+.podium__carte:hover, .podium__carte:focus-visible { border-color: var(--blanc); }
+.podium__carte img { width: 100%; height: 100%; aspect-ratio: 2 / 3; object-fit: cover; }
+.podium__texte { display: flex; flex-direction: column; gap: 10px; padding: 18px 20px 20px; min-width: 0; }
+.podium__rang { color: var(--rouge); font-size: clamp(3rem, 5vw, 4.5rem); font-weight: 800; line-height: .85; letter-spacing: -.05em; }
+.podium__titre { color: var(--blanc); font-size: clamp(1.125rem, 1.6vw, 1.375rem); font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
+.podium__carte:hover .podium__titre { text-decoration: underline; text-decoration-color: var(--rouge); text-decoration-thickness: 3px; text-underline-offset: 5px; }
+.podium__infos { color: var(--sourdine); font-size: .9375rem; }
+.podium__genres { display: flex; flex-wrap: wrap; gap: 6px; }
+.podium__genres span { padding: 2px 8px; border: 1px solid var(--trait-fort); font-size: .8125rem; }
+.podium__chiffres { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: auto; padding-top: 8px; color: var(--sourdine); font-size: .875rem; }
+.podium__chiffres b { display: block; color: var(--blanc); font-size: 1.5rem; font-weight: 300; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .affiche h2, .affiche h3 { margin-top: 12px; color: var(--blanc); font-size: 1.0625rem; font-weight: 700; line-height: 1.28; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .affiche p { margin-top: 4px; color: var(--sourdine); font-size: .9375rem; line-height: 1.4; }
 .affiche .barre { margin-top: 12px; }
@@ -407,6 +441,8 @@ button.lien-discret { background: none; border: 0; cursor: pointer; }
 /* --- Écrans plus étroits ------------------------------------------------- */
 
 @media (max-width: 1120px) {
+    .podium__carte { grid-template-columns: minmax(0, 1fr); }
+    .podium__carte img { aspect-ratio: 16 / 10; height: auto; object-position: center 25%; }
     .entete__ligne { flex-wrap: wrap; }
     .recherche { order: 5; flex-basis: 100%; max-width: none; }
     .logo { margin-right: auto; }
@@ -430,6 +466,11 @@ button.lien-discret { background: none; border: 0; cursor: pointer; }
     .reglage .btn { justify-self: stretch; }
     .admin { grid-template-columns: minmax(0, 1fr); }
     .admin__cote { position: static; }
+    .podium { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .podium__carte { grid-template-columns: 112px minmax(0, 1fr); }
+    .podium__carte img { aspect-ratio: 2 / 3; height: 100%; }
+    .podium__texte { padding: 14px 16px; gap: 8px; }
+    .podium__rang { font-size: 2.5rem; }
     .tuiles { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 28px 0 40px; }
     .tuile { padding: 16px 16px 18px; }
     .compte-ligne { grid-template-columns: 44px minmax(0, 1fr) 16px; padding: 14px 4px; }
