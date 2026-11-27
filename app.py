@@ -1127,6 +1127,17 @@ def detail_anime(mal_id):
         released=max(released, current_episode) if released else None,
     )
 
+def _flash_suivi(message, categorie):
+    """Remplace le message de suivi en attente au lieu de l'empiler.
+
+    Plusieurs clics rapides envoient plusieurs formulaires : le navigateur
+    abandonne les pages intermédiaires, et leurs messages s'accumulaient
+    jusqu'à la dernière.
+    """
+    session['_flashes'] = [f for f in session.get('_flashes', []) if not f[0].startswith('suivi-')]
+    flash(message, categorie)
+
+
 @app.route("/add_to_list", methods=["POST"])
 @login_required
 def add_to_list():
@@ -1141,7 +1152,7 @@ def add_to_list():
     # On reste sur la fiche, au niveau du bloc « Ma progression » où s'affiche le message
     fiche = url_for('detail_anime', mal_id=anime_id, _anchor='message-suivi')
     if _list_is_full(anime_id):
-        flash(f"Ta liste est pleine ({SUIVIS_MAX} animés).", "suivi-error")
+        _flash_suivi(f"Ta liste est pleine ({SUIVIS_MAX} animés).", "suivi-error")
         return redirect(fiche)
 
     # 2. Vérifier si cet animé est déjà dans la liste de l'utilisateur
@@ -1179,7 +1190,7 @@ def add_to_list():
         message = f"Progression enregistrée : épisode {vus}."
     if not existing_entry:
         message += " L'animé est ajouté à ta progression."
-    flash(message, "suivi-success")
+    _flash_suivi(message, "suivi-success")
     return redirect(fiche)
 
 
