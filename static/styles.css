@@ -239,6 +239,10 @@ button.lien-discret { background: none; border: 0; cursor: pointer; }
 .suivi__tete p { color: var(--sourdine); }
 .suivi__tete output { color: var(--blanc); font-weight: 700; font-variant-numeric: tabular-nums; }
 .suivi .btn { margin-top: 20px; }
+/* Après l'enregistrement, la page arrive sur le message (#message-suivi), au milieu de l'écran :
+   l'en-tête collant et le menu du bas ne le cachent pas, et le bouton reste visible au-dessus. */
+.suivi__messages { margin: 16px 0 0; scroll-margin-top: 50vh; }
+.message--success { border-left: 4px solid var(--blanc); }
 
 /* Une case par épisode : tout ce qui précède l'épisode choisi se remplit */
 .cases { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 3px; max-height: 336px; overflow-y: auto; }

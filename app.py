@@ -1138,9 +1138,11 @@ def add_to_list():
         flash("Progression invalide.", "error")
         return redirect(_safe_referrer())
 
+    # On reste sur la fiche, au niveau du bloc « Ma progression » où s'affiche le message
+    fiche = url_for('detail_anime', mal_id=anime_id, _anchor='message-suivi')
     if _list_is_full(anime_id):
-        flash(f"Ta liste est pleine ({SUIVIS_MAX} animés).", "error")
-        return redirect(_safe_referrer())
+        flash(f"Ta liste est pleine ({SUIVIS_MAX} animés).", "suivi-error")
+        return redirect(fiche)
 
     # 2. Vérifier si cet animé est déjà dans la liste de l'utilisateur
     existing_entry = Useranime.query.filter_by(
@@ -1167,8 +1169,18 @@ def add_to_list():
     # 3. Sauvegarder dans la base de données
     db.session.commit()
 
-    # 4. Rediriger vers le dashboard pour voir le résultat
-    return redirect(url_for('dashboard'))
+    # 4. Confirmer sur la fiche
+    vus = current_ep or 0
+    if total_ep and vus >= total_ep:
+        message = "Bravo, tu as vu tous les épisodes !"
+    elif vus == 0:
+        message = "Progression enregistrée : aucun épisode vu pour l'instant."
+    else:
+        message = f"Progression enregistrée : épisode {vus}."
+    if not existing_entry:
+        message += " L'animé est ajouté à ta progression."
+    flash(message, "suivi-success")
+    return redirect(fiche)
 
 
 def init_db() -> None:

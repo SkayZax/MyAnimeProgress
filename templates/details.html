@@ -3,8 +3,22 @@
 {% set statuts = {'Finished Airing': 'Terminé', 'Currently Airing': 'En cours', 'Not yet aired': 'À venir'} %}
 {% set total = anime.episodes or 0 %}
 {% set vus = current_episode or 0 %}
+{% set suivi_categories = ['suivi-success', 'suivi-error'] %}
 
 {% block title %}{{ anime['title'] }} - MyAnimeProgress{% endblock %}
+
+{# Les messages « suivi-… » s'affichent dans le bloc « Ma progression », les autres en haut #}
+{% block messages %}
+{% with messages = get_flashed_messages(with_categories=true) | rejectattr(0, 'in', suivi_categories) | list %}
+{% if messages %}
+<div class="messages" role="status">
+    {% for category, message in messages %}
+    <p class="message message--{{ category }}">{{ message }}</p>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+{% endblock %}
 
 {% block contenu %}
 <article class="fiche">
@@ -56,6 +70,15 @@
             {% endif %}
 
             <button type="submit" class="btn">Enregistrer ma progression</button>
+            {% with messages = get_flashed_messages(with_categories=true, category_filter=suivi_categories) %}
+            {% if messages %}
+            <div class="messages suivi__messages" id="message-suivi" role="status">
+                {% for category, message in messages %}
+                <p class="message message--{{ category[6:] }}">{{ message }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
         </form>
         {% else %}
         <div class="suivi">
