@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_macros.html" import titre %}
+{% block title %}Admin - MyAnimeProgress{% endblock %}
+
+{% block contenu %}
+{{ titre("Panel", "admin") }}
+
+<dl class="bilan">
+    <div><dt>Comptes</dt><dd>{{ stats.comptes }}</dd></div>
+    <div><dt>Vérifiés</dt><dd>{{ stats.verifies }}</dd></div>
+    <div><dt>Animés suivis</dt><dd>{{ stats.suivis }}</dd></div>
+    <div><dt>Favoris</dt><dd>{{ stats.favoris }}</dd></div>
+    <div><dt>Épisodes vus</dt><dd>{{ stats.episodes }}</dd></div>
+</dl>
+
+<div class="admin">
+    <section aria-labelledby="titre-comptes">
+        <div class="admin__tete">
+            <h2 class="sous-titre" id="titre-comptes">Comptes</h2>
+            <form class="admin__recherche" action="{{ url_for('admin') }}" method="get" role="search">
+                <label class="sr-only" for="q">Chercher un compte</label>
+                <input id="q" type="search" name="q" value="{{ recherche }}" placeholder="Pseudo ou email" maxlength="150">
+                <button class="btn btn--petit btn--ligne" type="submit">Chercher</button>
+                {% if recherche %}<a class="lien-discret" href="{{ url_for('admin') }}">Tout voir</a>{% endif %}
+            </form>
+        </div>
+
+        {% if comptes %}
+        <div class="tableau">
+            <table>
+                <thead>
+                    <tr><th scope="col">Pseudo</th><th scope="col">Email</th><th scope="col">Statut</th><th scope="col" class="nombre">Suivis</th><th scope="col" class="nombre">Favoris</th></tr>
+                </thead>
+                <tbody>
+                    {% for c in comptes %}
+                    {% set n, fav = compteurs.get(c.id, (0, 0)) %}
+                    <tr>
+                        <td><a href="{{ url_for('admin_user', user_id=c.id) }}">{{ c.username }}</a></td>
+                        <td>{{ c.email }}</td>
+                        <td>
+                            {% if c.is_admin %}<span class="etat etat--actif">Admin</span>{% endif %}
+                            {% if c.is_verified %}<span class="etat">Vérifié</span>{% else %}<span class="etat etat--attente">Non vérifié</span>{% endif %}
+                        </td>
+                        <td class="nombre">{{ n }}</td>
+                        <td class="nombre">{{ fav }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="vide">Aucun compte ne correspond à « {{ recherche }} ».</p>
+        {% endif %}
+    </section>
+
+    <section aria-labelledby="titre-top">
+        <h2 class="sous-titre" id="titre-top">Les plus suivis</h2>
+        {% if plus_suivis %}
+        <ol class="classement">
+            {% for anime_id, titre_anime, n in plus_suivis %}
+            <li><a href="{{ url_for('detail_anime', mal_id=anime_id) }}">{{ titre_anime }}</a><span>{{ n }} compte{{ 's' if n > 1 }}</span></li>
+            {% endfor %}
+        </ol>
+        {% else %}
+        <p class="vide">Personne ne suit encore d'animé.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

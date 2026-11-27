@@ -41,6 +41,7 @@
                 <a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}aria-current="page"{% endif %}>Progression</a>
                 <a href="{{ url_for('favorites') }}" {% if request.endpoint == 'favorites' %}aria-current="page"{% endif %}>Favoris</a>
                 <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}aria-current="page"{% endif %}>Paramètres</a>
+                {% if current_user.is_admin %}<a href="{{ url_for('admin') }}" {% if request.endpoint and request.endpoint.startswith('admin') %}aria-current="page"{% endif %}>Admin</a>{% endif %}
             </nav>
             <form action="{{ url_for('logout') }}" method="post">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

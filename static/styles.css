@@ -331,6 +331,37 @@ button.lien-discret { background: none; border: 0; cursor: pointer; }
 .coche { display: flex; align-items: center; gap: 12px; min-height: 44px; cursor: pointer; }
 .coche input { width: 22px; height: 22px; flex: none; accent-color: var(--rouge-fond); }
 
+/* --- Panel admin --------------------------------------------------------- */
+
+.admin { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 48px clamp(32px, 5vw, 72px); align-items: start; }
+.admin__tete { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 24px; margin-bottom: 18px; }
+.admin__tete .sous-titre { margin: 0; }
+.admin__recherche { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.admin__recherche input { min-height: 40px; padding: 6px 12px; min-width: 0; width: 220px; background: var(--noir); border: 1px solid var(--trait-fort); color: var(--blanc); }
+.admin__recherche input:focus { outline: none; border-color: var(--blanc); }
+.tableau { overflow-x: auto; border-top: 1px solid var(--trait); }
+.tableau table { width: 100%; border-collapse: collapse; }
+.tableau th, .tableau td { padding: 14px 16px 14px 0; text-align: left; border-bottom: 1px solid var(--trait); white-space: nowrap; }
+.tableau th { color: var(--sourdine); font-size: .875rem; font-weight: 500; }
+.tableau td a { color: var(--blanc); font-weight: 700; text-underline-offset: 4px; }
+.tableau td a:hover { text-decoration-color: var(--rouge); }
+.tableau .nombre { text-align: right; font-variant-numeric: tabular-nums; }
+.tableau tbody tr:hover { background: var(--noir-2); }
+.classement { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--trait); counter-reset: rang; }
+.classement li { display: flex; align-items: baseline; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--trait); counter-increment: rang; }
+.classement li::before { content: counter(rang); width: 1.5em; flex: none; color: var(--rouge); font-weight: 800; }
+.classement a { flex: 1; min-width: 0; color: var(--blanc); text-decoration: none; overflow-wrap: anywhere; }
+.classement a:hover { text-decoration: underline; text-decoration-color: var(--rouge); }
+.classement span { color: var(--sourdine); font-size: .875rem; white-space: nowrap; }
+.etat--attente { border-style: dashed; color: var(--sourdine); }
+.fil a { color: var(--sourdine); text-decoration: none; }
+.fil a:hover { color: var(--blanc); }
+.profil--admin { margin-top: 20px; }
+.profil__nom h1 { font-size: inherit; }
+.profil__nom .etat { margin-top: 8px; }
+.grille--admin { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 28px 18px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
 /* --- Écrans plus étroits ------------------------------------------------- */
 
 @media (max-width: 1120px) {
@@ -355,6 +386,9 @@ button.lien-discret { background: none; border: 0; cursor: pointer; }
     .reglages__sommaire a:hover { border-color: var(--blanc); }
     .reglage { grid-template-columns: minmax(0, 1fr); padding: 28px 0; scroll-margin-top: 150px; }
     .reglage .btn { justify-self: stretch; }
+    .admin { grid-template-columns: minmax(0, 1fr); }
+    .admin__recherche, .admin__recherche input { width: 100%; }
+    .admin__recherche input { flex: 1; }
 
     /* Navigation en bas, à portée de pouce */
     .connecte { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }

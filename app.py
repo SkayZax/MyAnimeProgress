@@ -14,6 +14,7 @@ import os
 import re
 import secrets
 import threading
+from functools import wraps
 from datetime import datetime, timedelta
 from flask_mail import Mail, Message
 from itsdangerous import BadSignature, URLSafeTimedSerializer
@@ -454,6 +455,8 @@ class User(UserMixin, db.Model):
     reset_code = db.Column(db.String(6), nullable=True)
     reset_expires_at = db.Column(db.DateTime, nullable=True)
     reset_nonce = db.Column(db.String(32), nullable=True)
+    # Accès au panel admin. Ne se donne jamais depuis le site par soi-même
+    is_admin = db.Column(db.Boolean, default=False, nullable=False)
 
 
 class OpenSession(db.Model):
@@ -1301,18 +1304,117 @@ def delete_account():
     if not _check_current_password(request.form.get('password') or ''):
         return redirect(url_for('settings'))
 
-    user_id = current_user.id
-    Useranime.query.filter_by(user_id=user_id).delete()
-    OpenSession.query.filter_by(user_id=user_id).delete()
-    User.query.filter_by(id=user_id).delete()
-    db.session.commit()
-    limiteur.oublier(f"settings:mdp:{user_id}")
+    _erase_user(current_user.id)
     logout_user()
     session.clear()
     flash("Ton compte et ta progression ont été supprimés.", "success")
     resp = redirect(url_for('index'))
     resp.delete_cookie(COOKIE_APPAREIL)
     return resp
+
+
+def _erase_user(user_id: int) -> None:
+    """Efface un compte, sa progression et ses sessions."""
+    Useranime.query.filter_by(user_id=user_id).delete()
+    OpenSession.query.filter_by(user_id=user_id).delete()
+    User.query.filter_by(id=user_id).delete()
+    db.session.commit()
+    limiteur.oublier(f"settings:mdp:{user_id}")
+
+
+# --- Panel admin ------------------------------------------------------------
+
+def admin_required(vue):
+    """Réservé aux admins. Les autres reçoivent une 404 : la page n'a pas l'air d'exister."""
+    @wraps(vue)
+    def protegee(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.is_admin:
+            abort(404)
+        return vue(*args, **kwargs)
+    return protegee
+
+
+@app.route('/admin')
+@admin_required
+def admin():
+    recherche = (request.args.get('q') or '').strip()[:150]
+    suivis_par_compte = (
+        db.session.query(
+            Useranime.user_id,
+            db.func.count(Useranime.id),
+            db.func.sum(db.case((Useranime.is_favorite.is_(True), 1), else_=0)),
+        ).group_by(Useranime.user_id)
+    )
+    compteurs = {uid: (n, fav or 0) for uid, n, fav in suivis_par_compte}
+
+    comptes = User.query
+    if recherche:
+        motif = f"%{recherche.lower()}%"
+        comptes = comptes.filter(db.or_(db.func.lower(User.username).like(motif), db.func.lower(User.email).like(motif)))
+    comptes = comptes.order_by(User.id).all()
+
+    plus_suivis = (
+        db.session.query(Useranime.anime_id, db.func.count(Useranime.id).label('n'))
+        .group_by(Useranime.anime_id).order_by(db.desc('n')).limit(5).all()
+    )
+    titres = {i.id: i.title for i in AnimeInfo.query.filter(AnimeInfo.id.in_([a for a, _ in plus_suivis]))}
+
+    stats = {
+        'comptes': User.query.count(),
+        'verifies': User.query.filter_by(is_verified=True).count(),
+        'suivis': Useranime.query.count(),
+        'favoris': Useranime.query.filter_by(is_favorite=True).count(),
+        'episodes': db.session.query(db.func.coalesce(db.func.sum(Useranime.current_episode), 0)).scalar(),
+    }
+    return render_template(
+        'admin.html', stats=stats, comptes=comptes, compteurs=compteurs, recherche=recherche,
+        plus_suivis=[(a, titres.get(a, f"Animé n° {a}"), n) for a, n in plus_suivis],
+    )
+
+
+@app.route('/admin/user/<int:user_id>')
+@admin_required
+def admin_user(user_id):
+    compte = db.session.get(User, user_id) or abort(404)
+    entries = Useranime.query.filter_by(user_id=compte.id).all()
+    infos = _infos(e.anime_id for e in entries)
+    animes = [dict(_entry_view(e, infos.get(e.anime_id)), favori=bool(e.is_favorite)) for e in entries]
+    animes.sort(key=lambda a: a['title'].lower())
+    return render_template(
+        'admin_user.html', compte=compte,
+        progression=animes, favoris=[a for a in animes if a['favori']],
+    )
+
+
+@app.route('/admin/user/<int:user_id>/admin', methods=['POST'])
+@admin_required
+def admin_toggle(user_id):
+    compte = db.session.get(User, user_id) or abort(404)
+    if compte.id == current_user.id:
+        flash("Tu ne peux pas changer ton propre rôle.", "error")
+    elif not compte.is_verified:
+        flash("Ce compte n'est pas vérifié.", "error")
+    else:
+        compte.is_admin = not compte.is_admin
+        db.session.commit()
+        flash(f"{compte.username} est maintenant admin." if compte.is_admin else f"{compte.username} n'est plus admin.", "success")
+    return redirect(url_for('admin_user', user_id=compte.id))
+
+
+@app.route('/admin/user/<int:user_id>/delete', methods=['POST'])
+@admin_required
+def admin_delete(user_id):
+    compte = db.session.get(User, user_id) or abort(404)
+    if compte.id == current_user.id:
+        flash("Pour supprimer ton propre compte, passe par Paramètres.", "error")
+        return redirect(url_for('admin_user', user_id=compte.id))
+    if request.form.get('confirm') != compte.username:
+        flash("Tape exactement le nom d'utilisateur pour confirmer.", "error")
+        return redirect(url_for('admin_user', user_id=compte.id))
+    nom = compte.username
+    _erase_user(compte.id)
+    flash(f"Le compte {nom} a été supprimé.", "success")
+    return redirect(url_for('admin'))
 
 
 def init_db() -> None:
@@ -1327,6 +1429,7 @@ def init_db() -> None:
             'reset_code': 'VARCHAR(6)',
             'reset_expires_at': 'DATETIME',
             'reset_nonce': 'VARCHAR(32)',
+            'is_admin': 'BOOLEAN NOT NULL DEFAULT 0',
         },
     }
     db.create_all()
