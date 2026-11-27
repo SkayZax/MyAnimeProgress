@@ -496,6 +496,8 @@ button.lien-discret { background: none; border: 0; cursor: pointer; }
     .affiche h2, .affiche h3 { font-size: 1rem; }
     .pagination .btn { flex: 1 1 100%; }
     .actions .btn { flex: 1 1 100%; }
+    .onglets { width: 100%; }
+    .onglets a { flex: 1; padding: 9px 6px; text-align: center; font-size: .9375rem; }
 }
 
 @media (max-width: 380px) {

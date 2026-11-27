@@ -35,7 +35,7 @@ Note l'épisode où tu en es pour chaque animé,<br>et retrouve toute ta progres
 
 | | |
 |---|---|
-| **Accueil** | Les animés les plus populaires et les grands classiques, classés |
+| **Accueil** | Les plus populaires, les mieux notés et les grands classiques |
 | **Catalogue** | Plus de 30 000 animés, 44 genres et une recherche |
 | **Progression** | Une case par épisode : clique sur le dernier vu, tout ce qui précède se remplit |
 | **Séries en cours** | Le nombre d'épisodes sortis se met à jour tout seul |

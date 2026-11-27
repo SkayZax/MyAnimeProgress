@@ -2,7 +2,8 @@
 {% from "_macros.html" import titre, barre, total_texte %}
 {% set visiteur = not current_user.is_authenticated and current_page == 1 and liste == 'populaires' %}
 {% set classiques = liste == 'classiques' %}
-{% set args_liste = {'liste': 'classiques'} if classiques else {} %}
+{% set notes = liste == 'notes' %}
+{% set args_liste = {'liste': liste} if liste != 'populaires' else {} %}
 {% set types = {'TV': 'Série', 'Movie': 'Film', 'OVA': 'OVA', 'ONA': 'ONA', 'Special': 'Spécial', 'TV Special': 'Spécial'} %}
 
 {# Petites infos sous un titre : année · type · épisodes #}
@@ -16,7 +17,7 @@
 {% if n >= 1000000 %}{{ (n / 1000000) | round(1) | string | replace('.0', '') | replace('.', ',') }} M{% else %}{{ (n / 1000) | round | int }} k{% endif %}
 {%- endmacro %}
 
-{% block title %}{% if classiques %}Les classiques - {% elif current_page > 1 %}Les plus populaires, page {{ current_page }} - {% endif %}MyAnimeProgress{% endblock %}
+{% block title %}{% if classiques %}Les classiques - {% elif notes %}Les mieux notés - {% elif current_page > 1 %}Les plus populaires, page {{ current_page }} - {% endif %}MyAnimeProgress{% endblock %}
 
 {% block contenu %}
 {% if visiteur %}
@@ -64,7 +65,8 @@
 
 <div class="accueil__tete">
     <nav class="onglets" aria-label="Listes">
-        <a href="{{ url_for('index') }}" {% if not classiques %}aria-current="page"{% endif %}>Populaires</a>
+        <a href="{{ url_for('index') }}" {% if liste == 'populaires' %}aria-current="page"{% endif %}>Populaires</a>
+        <a href="{{ url_for('index', liste='notes') }}" {% if notes %}aria-current="page"{% endif %}>Mieux notés</a>
         <a href="{{ url_for('index', liste='classiques') }}" {% if classiques %}aria-current="page"{% endif %}>Classiques</a>
     </nav>
     <div class="outils">
@@ -84,6 +86,9 @@
     {% if classiques %}
     {{ titre("Les", "classiques") }}
     <p class="intro">Les grands anciens : les animés sortis avant 2010 les plus suivis.</p>
+    {% elif notes %}
+    {{ titre("Les mieux", "notés") }}
+    <p class="intro">Le classement par note des membres de MyAnimeList{% if current_page > 1 %}, page {{ current_page }}{% endif %}.</p>
     {% else %}
     {{ titre("Les plus", "populaires", 'h2' if visiteur else 'h1') }}
     <p class="intro">Les animés les plus suivis sur MyAnimeList{% if current_page > 1 %}, page {{ current_page }}{% endif %}.</p>
@@ -107,7 +112,8 @@
                 {% if anime['genres'] %}<span class="podium__genres">{% for g in anime['genres'][:3] %}<span>{{ g.name }}</span>{% endfor %}</span>{% endif %}
                 <span class="podium__chiffres">
                     {% if anime['score'] %}<span><b>{{ (anime['score']|string).replace('.', ',') }}</b> note</span>{% endif %}
-                    {% if anime['members'] %}<span><b>{{ membres(anime['members']) }}</b> membres</span>{% endif %}
+                    {% if notes and anime['scored_by'] %}<span><b>{{ membres(anime['scored_by']) }}</b> votes</span>
+                    {% elif anime['members'] %}<span><b>{{ membres(anime['members']) }}</b> membres</span>{% endif %}
                 </span>
             </span>
         </a>
@@ -117,7 +123,7 @@
 {% endif %}
 
 {% if animes %}
-<ol class="grille grille--classement" aria-label="{{ 'Classiques' if classiques else 'Animés les plus populaires' }}">
+<ol class="grille grille--classement" aria-label="{{ 'Classiques' if classiques else ('Animés les mieux notés' if notes else 'Animés les plus populaires') }}">
     {% for anime in animes %}
     <li>
         <a class="affiche" href="{{ url_for('detail_anime', mal_id=anime['mal_id']) }}">
