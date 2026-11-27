@@ -1,8 +1,10 @@
 {% extends "base.html" %}
 {% from "_macros.html" import titre, barre %}
-{% set visiteur = not current_user.is_authenticated and current_page == 1 %}
+{% set visiteur = not current_user.is_authenticated and current_page == 1 and liste == 'populaires' %}
+{% set classiques = liste == 'classiques' %}
+{% set args_liste = {'liste': 'classiques'} if classiques else {} %}
 
-{% block title %}{% if current_page > 1 %}Les plus populaires, page {{ current_page }} - {% endif %}MyAnimeProgress{% endblock %}
+{% block title %}{% if classiques %}Les classiques - {% elif current_page > 1 %}Les plus populaires, page {{ current_page }} - {% endif %}MyAnimeProgress{% endblock %}
 
 {% block contenu %}
 {% if visiteur %}
@@ -27,10 +29,20 @@
 </section>
 {% endif %}
 
+<nav class="onglets" aria-label="Listes">
+    <a href="{{ url_for('index') }}" {% if not classiques %}aria-current="page"{% endif %}>Populaires</a>
+    <a href="{{ url_for('index', liste='classiques') }}" {% if classiques %}aria-current="page"{% endif %}>Classiques</a>
+</nav>
+
 <div class="catalogue__tete">
     <div>
+        {% if classiques %}
+        {{ titre("Les", "classiques") }}
+        <p class="intro">Les grands anciens : les animés sortis avant 2010 les plus suivis.</p>
+        {% else %}
         {{ titre("Les plus", "populaires", 'h2' if visiteur else 'h1') }}
         <p class="intro">Les animés les plus suivis sur MyAnimeList.</p>
+        {% endif %}
     </div>
     <div class="outils">
         <a class="btn btn--ligne btn--petit" href="{{ url_for('catalogue') }}">Tout le catalogue</a>
@@ -49,17 +61,18 @@
 <p class="intro masques">{% if masques == 1 %}1 animé 18+ est masqué{% else %}{{ masques }} animés 18+ sont masqués{% endif %} sur cette page. <a href="{{ url_for('age_gate', next=request.full_path) }}">Les afficher</a></p>
 {% endif %}
 {% if animes %}
-<ol class="grille grille--classement" aria-label="Animés les plus populaires">
+<ol class="grille grille--classement" aria-label="{{ 'Classiques' if classiques else 'Animés les plus populaires' }}">
     {% for anime in animes %}
     <li>
         <a class="affiche" href="{{ url_for('detail_anime', mal_id=anime['mal_id']) }}">
             <div class="affiche__image">
                 <img src="{{ anime['images']['jpg']['large_image_url'] or anime['images']['jpg']['image_url'] }}" alt="" loading="lazy" width="300" height="450">
-                {% set rang = anime['popularity'] or (rang_depart + loop.index) %}
+                {% set rang = anime['rang'] %}
                 <span class="affiche__rang{% if rang <= 3 %} affiche__rang--podium{% endif %}"><span class="sr-only">Rang </span>{{ rang }}</span>
             </div>
             <h2>{{ anime['title'] }}</h2>
-            <p>{% if anime['members'] %}{{ '{:,}'.format(anime['members']) | replace(',', ' ') }} membres{% else %}{{ anime['genres'] | map(attribute='name') | join(', ') }}{% endif %}</p>
+            {% set annee = ((anime['aired'] or {}).get('prop') or {}).get('from', {}).get('year') %}
+            <p>{% if classiques and annee %}{{ annee }} · {% endif %}{% if anime['members'] %}{{ '{:,}'.format(anime['members']) | replace(',', ' ') }} membres{% else %}{{ anime['genres'] | map(attribute='name') | join(', ') }}{% endif %}</p>
         </a>
     </li>
     {% endfor %}
@@ -73,11 +86,11 @@
 
 <nav class="pagination" aria-label="Pages">
     {% if current_page > 1 %}
-    <a class="btn btn--ligne" href="{{ url_for('index', page=current_page - 1) }}">Page précédente</a>
+    <a class="btn btn--ligne" href="{{ url_for('index', page=current_page - 1, **args_liste) }}">Page précédente</a>
     {% endif %}
     <strong>Page {{ current_page }}</strong>
     {% if page_pleine %}
-    <a class="btn btn--ligne" href="{{ url_for('index', page=current_page + 1) }}">Page suivante</a>
+    <a class="btn btn--ligne" href="{{ url_for('index', page=current_page + 1, **args_liste) }}">Page suivante</a>
     {% endif %}
 </nav>
 {% endblock %}

@@ -56,6 +56,11 @@ class API:
         data = self._get(self.url_api.rsplit("/", 1)[0] + "/top/anime", {"filter": "bypopularity", "page": page})
         return data.get("data", [])
 
+    def get_classics(self, page: int = 1, before: str = "2009-12-31") -> list:
+        """Animés terminés avant une date, du plus populaire au moins populaire."""
+        data = self._get(self.url_api, {"order_by": "popularity", "sort": "asc", "end_date": before, "page": page})
+        return data.get("data", [])
+
     def get_animepage(self,page: int=1)->list:
         data = self._get(self.url_api, {"page": page})
         return data.get("data",[])

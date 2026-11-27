@@ -375,15 +375,19 @@ def index():
     if request.args.get('search') or request.args.get('genres'):
         return redirect(url_for('catalogue', **request.args))
     page = max(1, min(request.args.get('page', 1, type=int), 1000))
-    recus = api.get_popular(page)
+    liste = 'classiques' if request.args.get('liste') == 'classiques' else 'populaires'
+    recus = api.get_classics(page) if liste == 'classiques' else api.get_popular(page)
+    # Rang dans la liste, compté avant de masquer le contenu 18+
+    for i, anime in enumerate(recus, start=(page - 1) * 25 + 1):
+        anime['rang'] = i
     animes, masques = _sans_adulte(recus)
     return render_template(
         "index.html",
+        liste=liste,
         animes=animes,
         masques=masques,
         page_pleine=len(recus) > 0,
         current_page=page,
-        rang_depart=(page - 1) * 25,
         age_verified=_age_verified(),
     )
 
