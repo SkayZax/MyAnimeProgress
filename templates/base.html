@@ -37,16 +37,19 @@
 
             {% if current_user.is_authenticated %}
             <nav class="menu" aria-label="Navigation principale">
-                <a href="{{ url_for('catalogue') }}" {% if request.endpoint == 'catalogue' %}aria-current="page"{% endif %}>Catalogue</a>
-                <a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}aria-current="page"{% endif %}>Progression</a>
-                <a href="{{ url_for('favorites') }}" {% if request.endpoint == 'favorites' %}aria-current="page"{% endif %}>Favoris</a>
-                <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}aria-current="page"{% endif %}>Paramètres</a>
-                {% if current_user.is_admin %}<a href="{{ url_for('admin') }}" {% if request.endpoint and request.endpoint.startswith('admin') %}aria-current="page"{% endif %}>Admin</a>{% endif %}
+                <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11 12 4l8 7M6 9.5V20h12V9.5"/></svg>Accueil</a>
+                <a href="{{ url_for('catalogue') }}" {% if request.endpoint == 'catalogue' %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4ZM13 4h7v7h-7ZM4 13h7v7H4ZM13 13h7v7h-7Z"/></svg>Catalogue</a>
+                <a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg>Progression</a>
+                <a href="{{ url_for('favorites') }}" {% if request.endpoint == 'favorites' %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9Z"/></svg>Favoris</a>
+                {% if current_user.is_admin %}<a href="{{ url_for('admin') }}" {% if request.endpoint and request.endpoint.startswith('admin') %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19 6v5.5c0 4.4-3 7.7-7 9-4-1.3-7-4.6-7-9V6Z"/></svg>Admin</a>{% endif %}
             </nav>
-            <form action="{{ url_for('logout') }}" method="post">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button class="lien-discret" type="submit">Déconnexion</button>
-            </form>
+            <div class="compte">
+                <a class="avatar avatar--entete{% if request.endpoint == 'settings' %} avatar--actif{% endif %}" href="{{ url_for('settings') }}" title="Paramètres" aria-label="Paramètres du compte {{ current_user.username }}">{{ current_user.username[:1] | upper }}</a>
+                <form action="{{ url_for('logout') }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="lien-discret" type="submit">Déconnexion</button>
+                </form>
+            </div>
             {% else %}
             <div class="compte">
                 <a class="lien-discret" href="{{ url_for('login') }}">Connexion</a>
@@ -71,6 +74,16 @@
 
         {% block contenu %}{% endblock %}
     </main>
+
+    <footer class="pied">
+        <div class="pied__ligne">
+            <span><b>MyAnime</b>Progress · données <a href="https://tenrai.org" rel="noopener">Tenrai</a> et MyAnimeList</span>
+            <nav aria-label="Liens du site">
+                <a href="{{ url_for('nouveautes') }}">Nouveautés</a>
+                <a href="{{ url_for('catalogue') }}">Catalogue</a>
+            </nav>
+        </div>
+    </footer>
 
     {% if nouveaute and request.endpoint != 'nouveautes' %}
     {% from "_nouveautes.html" import points %}

@@ -4,22 +4,34 @@
 
 {% block contenu %}
 {{ titre("Ma", "progression") }}
-<p class="intro">Content de te revoir, {{ current_user.username }}.</p>
 
 <dl class="bilan">
-    <div><dt>Temps passé</dt><dd>{{ total_time_str }}</dd></div>
-    <div><dt>Épisodes vus</dt><dd>{{ total_vu }}</dd></div>
-    <div><dt>Animés en cours</dt><dd>{{ nbr_anime }}</dd></div>
+    <div class="bilan__fort">
+        <dt>Temps passé</dt>
+        <dd>{{ bilan.minutes // 60 }}<small>h</small>{{ '%02d' % (bilan.minutes % 60) }}</dd>
+        {% if bilan.minutes >= 1440 %}<p>soit {{ (bilan.minutes / 1440) | round(1) | string | replace('.0', '') | replace('.', ',') }} jours devant l'écran</p>{% endif %}
+    </div>
+    <div><dt>Épisodes vus</dt><dd>{{ '{:,}'.format(bilan.episodes) | replace(',', ' ') }}</dd></div>
+    <div><dt>En cours</dt><dd>{{ bilan.en_cours }}</dd></div>
+    <div><dt>Terminés</dt><dd>{{ bilan.termines }}</dd></div>
 </dl>
 
+{% if bilan.suivis %}
+<div class="suivis__tete">
+    <nav class="filtres" aria-label="Filtrer mes animés">
+        {% for cle, nom in [('tous', 'Tous'), ('en-cours', 'En cours'), ('termines', 'Terminés'), ('favoris', 'Favoris')] %}
+        <a href="{{ url_for('dashboard', filtre=cle) if cle != 'tous' else url_for('dashboard') }}" {% if filtre == cle %}aria-current="page"{% endif %}>{{ nom }} <span>{{ compte_filtres[cle] }}</span></a>
+        {% endfor %}
+    </nav>
+</div>
+
 {% if animes %}
-<h2 class="sous-titre">Mes animés</h2>
 <div class="suivis">
     {% for anime in animes %}
     <a class="ligne" href="{{ url_for('detail_anime', mal_id=anime.id) }}">
         <img src="{{ anime.image or url_for('static', filename='icon-512.png') }}" alt="" loading="lazy" width="72" height="108">
         <div>
-            <h3>{{ anime.title }}</h3>
+            <h3>{% if anime.favori %}<span class="etoile" title="Favori">★</span> {% endif %}{{ anime.title }}</h3>
             <p>{{ anime.watched_minutes // 60 }}h{{ '%02d' % (anime.watched_minutes % 60) }} de visionnage</p>
         </div>
         {{ barre(anime.current_episode, anime.total_episode or anime.released) }}
@@ -27,6 +39,9 @@
     </a>
     {% endfor %}
 </div>
+{% else %}
+<p class="vide"><span>Aucun animé dans cette liste.</span></p>
+{% endif %}
 {% else %}
 <div class="vide">
     <p>Tu ne suis encore aucun animé. Choisis-en un et note ton épisode pour le retrouver ici.</p>

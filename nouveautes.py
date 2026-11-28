@@ -10,6 +10,27 @@ reglages, fiche, cle, palette, calendrier, bouclier.
 
 NOUVEAUTES = [
     {
+        'version': '2026-11-28-refonte',
+        'date': '28 novembre 2026',
+        'titre': 'Le site',
+        'suite': 'change de look',
+        'resume': "Toujours noir et rouge, mais en plus grand, plus lisible et plus rapide à prendre en main.",
+        'points': [
+            {'icone': 'palette', 'titre': 'Une nouvelle typographie',
+             'texte': 'De grands titres étroits et des chiffres bien visibles partout.'},
+            {'icone': 'reprise', 'titre': 'Reprends en un clic',
+             'texte': 'L’accueil montre tes chiffres et un bouton vers ton prochain épisode.'},
+            {'icone': 'etoile', 'titre': 'Le n° 1 en vedette',
+             'texte': 'Le premier de chaque classement a droit à une grande carte.'},
+            {'icone': 'fiche', 'titre': 'Une fiche plus claire',
+             'texte': 'Note, rang et membres en grand, et l’épisode où tu en es bien en évidence.'},
+            {'icone': 'calendrier', 'titre': 'Des filtres dans ta progression',
+             'texte': 'Tous, En cours, Terminés ou Favoris : affiche seulement ce que tu veux.'},
+            {'icone': 'accueil', 'titre': 'Un menu mobile avec icônes',
+             'texte': 'Le menu du bas est plus facile à viser avec le pouce.'},
+        ],
+    },
+    {
         'version': '2026-11-28',
         'date': '28 novembre 2026',
         'titre': "L'accueil",

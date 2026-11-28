@@ -233,6 +233,26 @@ def _entry_view(entry, info) -> dict:
         'released': released,
         'duration_min': duree,
         'watched_minutes': vus * duree,
+        'favori': bool(entry.is_favorite),
+    }
+
+
+def _termine(vue: dict) -> bool:
+    return bool(vue['total_episode']) and (vue['current_episode'] or 0) >= vue['total_episode']
+
+
+def _bilan(vues: list) -> dict:
+    """Chiffres de la page Progression et de l'accueil."""
+    minutes = sum(v['watched_minutes'] for v in vues)
+    return {
+        'minutes': minutes,
+        'temps': f"{minutes // 60}h{minutes % 60:02d}",
+        'heures': minutes // 60,
+        'episodes': sum(int(v['current_episode'] or 0) for v in vues),
+        'en_cours': sum(1 for v in vues if (v['current_episode'] or 0) > 0 and not _termine(v)),
+        'termines': sum(1 for v in vues if _termine(v)),
+        'favoris': sum(1 for v in vues if v['favori']),
+        'suivis': len(vues),
     }
 
 
@@ -398,6 +418,17 @@ def _a_reprendre(limite: int = 6) -> list:
     return vues
 
 
+def _bilan_accueil() -> dict:
+    """Bilan de l'utilisateur pour l'accueil, lu en base seulement (jamais l'API)."""
+    entries = Useranime.query.filter_by(user_id=current_user.id).all()
+    ids = [e.anime_id for e in entries]
+    infos = {}
+    for i in range(0, len(ids), 500):
+        for info in AnimeInfo.query.filter(AnimeInfo.id.in_(ids[i:i + 500])):
+            infos[info.id] = info
+    return _bilan([_entry_view(e, infos.get(e.anime_id)) for e in entries])
+
+
 @app.route("/", methods=["GET"])
 def index():
     """Accueil : les animés les plus populaires selon l'API."""
@@ -416,6 +447,7 @@ def index():
         "index.html",
         liste=liste,
         reprendre=_a_reprendre() if current_user.is_authenticated and page == 1 else [],
+        bilan=_bilan_accueil() if current_user.is_authenticated and page == 1 else None,
         podium=animes[:3] if page == 1 else [],
         animes=animes[3:] if page == 1 else animes,
         masques=masques,
@@ -1054,29 +1086,24 @@ def reset_password():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-
     entries = Useranime.query.filter_by(user_id=current_user.id).all()
     infos = _infos(e.anime_id for e in entries)
     anime_list = [_entry_view(e, infos.get(e.anime_id)) for e in entries]
-    total_global_episodes = sum(a['current_episode'] or 0 for a in anime_list)
-    total_minutes = sum(a['watched_minutes'] for a in anime_list)
-    nbr_anime = sum(
-        1 for a in anime_list
-        if (a['current_episode'] or 0) > 0 and (not a['total_episode'] or a['current_episode'] < a['total_episode'])
-    )
 
-    # Formatage du temps total: XhYY
-    total_hours = total_minutes // 60
-    remaining_minutes = total_minutes % 60
-    total_time_str = f"{total_hours}h{remaining_minutes:02d}"
+    filtres = {
+        'tous': lambda a: True,
+        'en-cours': lambda a: not _termine(a),
+        'termines': _termine,
+        'favoris': lambda a: a['favori'],
+    }
+    filtre = request.args.get('filtre') if request.args.get('filtre') in filtres else 'tous'
 
     return render_template(
         "dashboard.html",
-        animes=anime_list,
-        total_vu=total_global_episodes,
-        nbr_anime=nbr_anime,
-        total_minutes=total_minutes,
-        total_time_str=total_time_str,
+        animes=[a for a in anime_list if filtres[filtre](a)],
+        bilan=_bilan(anime_list),
+        filtre=filtre,
+        compte_filtres={nom: sum(1 for a in anime_list if f(a)) for nom, f in filtres.items()},
     )
 
 

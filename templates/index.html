@@ -42,24 +42,39 @@
 </section>
 {% endif %}
 
-{% if reprendre %}
-<section class="reprendre" aria-labelledby="titre-reprendre">
-    <div class="reprendre__tete">
-        <h2 class="sous-titre" id="titre-reprendre">Content de te revoir, {{ current_user.username }}</h2>
-        <a class="lien-discret" href="{{ url_for('dashboard') }}">Toute ma progression →</a>
+{% if bilan %}
+<section class="bonjour" aria-labelledby="titre-bonjour">
+    <div class="bonjour__tete">
+        <h1 class="titre titre--page" id="titre-bonjour"><b>Content de te revoir,</b> <span>{{ current_user.username }}</span></h1>
+        <dl class="bonjour__chiffres">
+            <div><dt>En cours</dt><dd>{{ bilan.en_cours }}</dd></div>
+            <div><dt>Épisodes vus</dt><dd>{{ '{:,}'.format(bilan.episodes) | replace(',', ' ') }}</dd></div>
+            <div><dt>Temps passé</dt><dd>{{ '{:,}'.format(bilan.heures) | replace(',', ' ') }}<small> h</small></dd></div>
+        </dl>
     </div>
-    <div class="reprendre__liste">
-        {% for a in reprendre %}
-        <a class="carte-reprise" href="{{ url_for('detail_anime', mal_id=a.id) }}">
-            <img src="{{ a.image or url_for('static', filename='icon-192.png') }}" alt="" loading="lazy" width="64" height="96">
-            <span class="carte-reprise__texte">
-                <b>{{ a.title }}</b>
-                <span>Épisode {{ a.current_episode }} sur {{ total_texte(a.total_episode, a.released) }}</span>
-                {{ barre(a.current_episode, a.total_episode or a.released) }}
-            </span>
-        </a>
-        {% endfor %}
+
+    {% if reprendre %}
+    <div class="reprendre">
+        <div class="reprendre__tete">
+            <h2 class="etiquette">À reprendre</h2>
+            <a class="lien-discret" href="{{ url_for('dashboard') }}">Toute ma progression →</a>
+        </div>
+        <div class="reprendre__liste">
+            {% for a in reprendre %}
+            {% set total = a.total_episode or a.released %}
+            <a class="carte-reprise" href="{{ url_for('detail_anime', mal_id=a.id) }}">
+                <img src="{{ a.image or url_for('static', filename='icon-192.png') }}" alt="" loading="lazy" width="104" height="156">
+                <span class="carte-reprise__texte">
+                    <b>{{ a.title }}</b>
+                    <span>Épisode <strong>{{ a.current_episode }}</strong> sur {{ total_texte(a.total_episode, a.released) }}</span>
+                    {{ barre(a.current_episode, total) }}
+                    {% if not total or a.current_episode < total %}<span class="carte-reprise__suite">Épisode {{ a.current_episode + 1 }} →</span>{% endif %}
+                </span>
+            </a>
+            {% endfor %}
+        </div>
     </div>
+    {% endif %}
 </section>
 {% endif %}
 
@@ -82,18 +97,9 @@
     </div>
 </div>
 
-<div class="accueil__titre">
-    {% if classiques %}
-    {{ titre("Les", "classiques") }}
-    <p class="intro">Les grands anciens : les animés sortis avant 2010 les plus suivis.</p>
-    {% elif notes %}
-    {{ titre("Les mieux", "notés") }}
-    <p class="intro">Le classement par note des membres de MyAnimeList{% if current_page > 1 %}, page {{ current_page }}{% endif %}.</p>
-    {% else %}
-    {{ titre("Les plus", "populaires", 'h2' if visiteur else 'h1') }}
-    <p class="intro">Les animés les plus suivis sur MyAnimeList{% if current_page > 1 %}, page {{ current_page }}{% endif %}.</p>
-    {% endif %}
-</div>
+{% set balise = 'h2' if (visiteur or bilan) else 'h1' %}
+<{{ balise }} class="sr-only">{% if classiques %}Les classiques{% elif notes %}Les mieux notés{% else %}Les plus populaires{% endif %}</{{ balise }}>
+<p class="intro accueil__intro">{% if classiques %}Les grands anciens : les animés sortis avant 2010 les plus suivis.{% elif notes %}Le classement par note des membres de MyAnimeList{% if current_page > 1 %}, page {{ current_page }}{% endif %}.{% else %}Les animés les plus suivis sur MyAnimeList{% if current_page > 1 %}, page {{ current_page }}{% endif %}.{% endif %}</p>
 
 {% if masques %}
 <p class="intro masques">{% if masques == 1 %}1 animé 18+ est masqué{% else %}{{ masques }} animés 18+ sont masqués{% endif %} sur cette page. <a href="{{ url_for('age_gate', next=request.full_path) }}">Les afficher</a></p>

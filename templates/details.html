@@ -35,14 +35,24 @@
     </div>
 
     <div>
+        {% set annee = ((anime['aired'] or {}).get('prop') or {}).get('from', {}).get('year') %}
+        {% set types = {'TV': 'Série', 'Movie': 'Film', 'OVA': 'OVA', 'ONA': 'ONA', 'Special': 'Spécial', 'TV Special': 'Spécial'} %}
         <h1 class="fiche__titre">{{ anime['title'] }}</h1>
-        {% if anime['genres'] %}<p class="fiche__genres">{{ anime['genres'] | map(attribute='name') | join(', ') }}</p>{% endif %}
+        {% if anime['title_english'] and anime['title_english'] != anime['title'] %}<p class="fiche__autre">{{ anime['title_english'] }}</p>{% endif %}
+        <ul class="puces" aria-label="Informations">
+            {% if annee %}<li>{{ annee }}</li>{% endif %}
+            {% if anime['type'] %}<li>{{ types.get(anime['type'], anime['type']) }}</li>{% endif %}
+            {% if anime['duration'] and anime['duration'] != 'Unknown' %}<li>{{ anime['duration'] | replace(' per ep', '') }}</li>{% endif %}
+            {% for g in anime['genres'] or [] %}<li class="puces__genre">{{ g.name }}</li>{% endfor %}
+        </ul>
 
         <dl class="faits">
-            <div><dt>Score</dt><dd>{{ (anime['score']|string).replace('.', ',') if anime['score'] else '–' }}</dd></div>
+            <div><dt>Note</dt><dd>{{ (anime['score']|string).replace('.', ',') if anime['score'] else '–' }}</dd></div>
+            {% if anime['rank'] %}<div><dt>Rang</dt><dd>n° {{ '{:,}'.format(anime['rank']) | replace(',', ' ') }}</dd></div>{% endif %}
+            {% if anime['members'] %}<div><dt>Membres</dt><dd>{% if anime['members'] >= 1000000 %}{{ (anime['members'] / 1000000) | round(1) | string | replace('.0', '') | replace('.', ',') }} M{% else %}{{ (anime['members'] / 1000) | round | int }} k{% endif %}</dd></div>{% endif %}
             <div><dt>Épisodes</dt><dd>{{ total_texte(total, released) }}</dd></div>
             <div><dt>Statut</dt><dd>{{ statuts.get(anime['status'], anime['status'] or '–') }}</dd></div>
-            {% if anime['rating'] %}<div><dt>Classification</dt><dd>{{ anime['rating'].split(' - ')[0] }}</dd></div>{% endif %}
+            {% if anime['rating'] %}<div><dt>Public</dt><dd>{{ anime['rating'].split(' - ')[0] }}</dd></div>{% endif %}
         </dl>
 
         {% if current_user.is_authenticated %}
@@ -52,7 +62,7 @@
             <input type="hidden" name="total_episode" value="{{ anime.episodes }}">
             <div class="suivi__tete">
                 <h2>Ma progression</h2>
-                <p>Épisode <output id="episode-choisi">{{ vus }}</output> sur {{ total_texte(total, released) }}</p>
+                <p class="suivi__compte"><span class="sr-only">Épisode </span><output id="episode-choisi">{{ vus }}</output> <span>/ {{ total_texte(total, released) }}{% if total %} épisodes{% endif %}</span></p>
             </div>
 
             {% if 0 < total <= 250 %}
