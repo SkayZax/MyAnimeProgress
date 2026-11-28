@@ -13,9 +13,11 @@
     });
     // Un clic sur le fond sombre ferme aussi la pop-up
     boite.addEventListener('click', function (e) {
-        if (e.target === boite) boite.close();
+        if (e.target !== boite) return;
+        var r = boite.getBoundingClientRect();
+        if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) boite.close();
     });
-    boite.querySelector('a').addEventListener('click', function () {
+    boite.querySelector('.maj__pied a').addEventListener('click', function () {
         try { localStorage.setItem(cle, version); } catch (e) {}
     });
     boite.showModal();

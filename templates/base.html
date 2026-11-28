@@ -73,15 +73,22 @@
     </main>
 
     {% if nouveaute and request.endpoint != 'nouveautes' %}
-    <dialog class="nouveautes" id="nouveautes" data-version="{{ nouveaute.version }}" aria-labelledby="nouveautes-titre">
-        <p class="nouveautes__etiquette">Nouveautés · {{ nouveaute.date }}</p>
-        <h2 id="nouveautes-titre">{{ nouveaute.titre }}</h2>
-        <ul>
-            {% for point in nouveaute.points %}<li>{{ point }}</li>{% endfor %}
-        </ul>
-        <form method="dialog" class="nouveautes__actions">
-            <button class="btn" type="submit">C'est parti</button>
-            <a class="lien-discret" href="{{ url_for('nouveautes') }}">Toutes les mises à jour</a>
+    {% from "_nouveautes.html" import points %}
+    <dialog class="maj" id="nouveautes" data-version="{{ nouveaute.version }}" aria-labelledby="maj-titre">
+        <form method="dialog" class="maj__fermer">
+            <button type="submit" aria-label="Fermer">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+        </form>
+        <header class="maj__tete">
+            <p class="maj__etiquette"><span class="pastille">Nouveau</span> {{ nouveaute.date }}</p>
+            <h2 class="titre" id="maj-titre"><b>{{ nouveaute.titre }}</b> <span>{{ nouveaute.suite }}</span></h2>
+            {% if nouveaute.resume %}<p class="maj__resume">{{ nouveaute.resume }}</p>{% endif %}
+        </header>
+        {{ points(nouveaute) }}
+        <form method="dialog" class="maj__pied">
+            <a class="lien-discret" href="{{ url_for('nouveautes') }}">Voir toutes les mises à jour →</a>
+            <button class="btn" type="submit" autofocus>C'est parti</button>
         </form>
     </dialog>
     <script src="{{ url_for('static', filename='nouveautes.js') }}" defer></script>

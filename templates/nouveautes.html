@@ -1,19 +1,24 @@
 {% extends "base.html" %}
 {% from "_macros.html" import titre %}
+{% from "_nouveautes.html" import points %}
 {% block title %}Nouveautés - MyAnimeProgress{% endblock %}
 
 {% block contenu %}
 {{ titre("Les", "nouveautés") }}
-<p class="intro">Tout ce qui a été ajouté au site, de la plus récente à la plus ancienne.</p>
+<p class="intro">Tout ce qui a été ajouté au site, de la mise à jour la plus récente à la plus ancienne.</p>
 
 <ol class="journal">
     {% for note in notes %}
-    <li class="journal__note">
-        <p class="nouveautes__etiquette">{{ note.date }}{% if loop.first %} · <span class="journal__neuf">Dernière</span>{% endif %}</p>
-        <h2>{{ note.titre }}</h2>
-        <ul>
-            {% for point in note.points %}<li>{{ point }}</li>{% endfor %}
-        </ul>
+    <li class="journal__note{% if loop.first %} journal__note--derniere{% endif %}">
+        <p class="journal__date">
+            <time datetime="{{ note.version }}">{{ note.date }}</time>
+            {% if loop.first %}<span class="pastille">Dernière</span>{% endif %}
+        </p>
+        <div class="journal__corps">
+            <h2 class="journal__titre"><b>{{ note.titre }}</b> {{ note.suite }}</h2>
+            {% if note.resume %}<p class="maj__resume">{{ note.resume }}</p>{% endif %}
+            {{ points(note) }}
+        </div>
     </li>
     {% endfor %}
 </ol>
