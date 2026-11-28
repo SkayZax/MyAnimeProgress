@@ -440,6 +440,27 @@ button.lien-discret { background: none; border: 0; cursor: pointer; }
 
 /* --- Écrans plus étroits ------------------------------------------------- */
 
+/* --- Nouveautés : pop-up et journal ------------------------------------- */
+.nouveautes {
+    width: min(520px, calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow-x: hidden; overflow-y: auto;
+    padding: 32px; margin: auto;
+    background: var(--noir-2); color: var(--texte);
+    border: 1px solid var(--trait); border-top: 5px solid var(--rouge);
+}
+.nouveautes::backdrop { background: rgb(0 0 0 / .75); }
+.nouveautes[open] { animation: nouveautes-entree .25s ease-out; }
+@keyframes nouveautes-entree { from { opacity: 0; transform: translateY(12px); } }
+.nouveautes__etiquette { color: var(--sourdine); font-size: .8125rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.nouveautes h2, .journal__note h2 { color: var(--blanc); font-size: 1.5rem; font-weight: 800; line-height: 1.2; margin: 8px 0 18px; }
+.nouveautes ul, .journal__note ul { display: grid; gap: 10px; padding: 0; list-style: none; }
+.nouveautes li, .journal__note li { position: relative; padding-left: 20px; }
+.nouveautes li::before, .journal__note li::before { content: ""; position: absolute; left: 0; top: .6em; width: 8px; height: 3px; background: var(--rouge); }
+.nouveautes__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 28px; }
+
+.journal { display: grid; gap: 0; max-width: 720px; margin-top: 40px; padding: 0; list-style: none; }
+.journal__note { padding: 28px 0; border-top: 1px solid var(--trait); }
+.journal__neuf { color: var(--rouge); }
+
 @media (max-width: 1120px) {
     .podium__carte { grid-template-columns: minmax(0, 1fr); }
     .podium__carte img { aspect-ratio: 16 / 10; height: auto; object-position: center 25%; }
@@ -489,6 +510,8 @@ button.lien-discret { background: none; border: 0; cursor: pointer; }
 }
 
 @media (max-width: 520px) {
+    .nouveautes { padding: 24px 20px; }
+    .nouveautes__actions .btn { width: 100%; }
     .logo { font-size: 1.125rem; }
     .compte { gap: 14px; }
     .btn--petit { padding: 6px 12px; }

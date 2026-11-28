@@ -5,6 +5,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from api.API import API, APIError
 from securite import Limiteur, mot_de_passe_trop_courant
+from nouveautes import NOUVEAUTES
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
 from flask_wtf.csrf import CSRFError, CSRFProtect
@@ -128,6 +129,17 @@ def security_headers(response):
     if request.is_secure:
         response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000')
     return response
+
+
+@app.context_processor
+def derniere_nouveaute():
+    """La dernière note de mise à jour, pour la pop-up de base.html."""
+    return {'nouveaute': NOUVEAUTES[0] if NOUVEAUTES else None}
+
+
+@app.route('/nouveautes')
+def nouveautes():
+    return render_template("nouveautes.html", notes=NOUVEAUTES)
 
 
 def _too_many():

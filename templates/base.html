@@ -71,5 +71,20 @@
 
         {% block contenu %}{% endblock %}
     </main>
+
+    {% if nouveaute and request.endpoint != 'nouveautes' %}
+    <dialog class="nouveautes" id="nouveautes" data-version="{{ nouveaute.version }}" aria-labelledby="nouveautes-titre">
+        <p class="nouveautes__etiquette">Nouveautés · {{ nouveaute.date }}</p>
+        <h2 id="nouveautes-titre">{{ nouveaute.titre }}</h2>
+        <ul>
+            {% for point in nouveaute.points %}<li>{{ point }}</li>{% endfor %}
+        </ul>
+        <form method="dialog" class="nouveautes__actions">
+            <button class="btn" type="submit">C'est parti</button>
+            <a class="lien-discret" href="{{ url_for('nouveautes') }}">Toutes les mises à jour</a>
+        </form>
+    </dialog>
+    <script src="{{ url_for('static', filename='nouveautes.js') }}" defer></script>
+    {% endif %}
 </body>
 </html>
