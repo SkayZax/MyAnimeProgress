@@ -6,6 +6,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from api.API import API, APIError
 from securite import Limiteur, mot_de_passe_trop_courant
 from nouveautes import NOUVEAUTES
+from classiques import CLASSIQUES
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
 from flask_wtf.csrf import CSRFError, CSRFProtect
@@ -104,6 +105,18 @@ def page_not_found(error):
 def csrf_invalid(error):
     flash("La page avait expiré. Recommence.", "error")
     return redirect(_safe_referrer())
+
+
+_classiques_lances = False
+
+
+@app.before_request
+def prechauffer_classiques():
+    """Charge les Classiques en arrière-plan dès la première visite après un démarrage."""
+    global _classiques_lances
+    if not _classiques_lances and request.endpoint != 'static':
+        _classiques_lances = True
+        api.prechauffer(CLASSIQUES)
 
 
 @app.before_request
@@ -436,7 +449,12 @@ def index():
     if request.args.get('search') or request.args.get('genres'):
         return redirect(url_for('catalogue', **request.args))
     page = max(1, min(request.args.get('page', 1, type=int), 1000))
-    listes = {'populaires': api.get_popular, 'notes': api.get_top_rated, 'classiques': api.get_classics}
+    listes = {
+        'populaires': api.get_popular,
+        'notes': api.get_top_rated,
+        # Sélection faite à la main : tout tient sur une seule page
+        'classiques': lambda p: api.get_selection(CLASSIQUES) if p == 1 else [],
+    }
     liste = request.args.get('liste') if request.args.get('liste') in listes else 'populaires'
     recus = listes[liste](page)
     # Rang dans la liste, compté avant de masquer le contenu 18+
@@ -451,7 +469,7 @@ def index():
         podium=animes[:3] if page == 1 else [],
         animes=animes[3:] if page == 1 else animes,
         masques=masques,
-        page_pleine=len(recus) > 0,
+        page_pleine=len(recus) > 0 and liste != 'classiques',
         current_page=page,
         age_verified=_age_verified(),
     )

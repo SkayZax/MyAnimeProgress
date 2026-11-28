@@ -1,4 +1,6 @@
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -15,11 +17,15 @@ class API:
     # Duree de memorisation des episodes sortis, en secondes
     RELEASED_TTL = 6 * 3600
     RELEASED_TTL_ERROR = 10 * 60
+    # Duree de memorisation des fiches d'une selection (onglet Classiques), en secondes
+    SELECTION_TTL = 12 * 3600
 
     def __init__(self):
         # Tenrai reprend le format de Jikan v4 (API publique fermee le 1er octobre 2026)
         self.url_api = "https://api.tenrai.org/v1/anime"
         self._released = {}  # anime_id -> (expiration, nombre ou None)
+        self._fiches = {}  # anime_id -> (expiration, fiche)
+        self._fiches_verrou = threading.Lock()  # une seule mise à jour de sélection à la fois
         self.session = requests.Session()
         # Coupure : un nouvel essai. Limite de debit ou erreur serveur : deux, dont un apres ~2 s
         retry = Retry(
@@ -61,10 +67,51 @@ class API:
         data = self._get(self.url_api.rsplit("/", 1)[0] + "/top/anime", {"page": page})
         return data.get("data", [])
 
-    def get_classics(self, page: int = 1, before: str = "2009-12-31") -> list:
-        """Animés terminés avant une date, du plus populaire au moins populaire."""
-        data = self._get(self.url_api, {"order_by": "popularity", "sort": "asc", "end_date": before, "page": page})
-        return data.get("data", [])
+    def get_selection(self, ids: list) -> list:
+        """Fiches d'une liste d'animés choisis, du plus suivi au moins suivi.
+
+        Gardées en mémoire SELECTION_TTL. Une fiche périmée est servie telle quelle
+        pendant qu'un fil la relit en arrière-plan : seul le tout premier affichage attend l'API.
+        """
+        now = time.monotonic()
+        absents = [i for i in ids if i not in self._fiches]
+        if absents:
+            self._charger(absents)
+            if not any(i in self._fiches for i in ids):
+                raise APIError("aucune fiche de la sélection n'a répondu")
+        elif any(self._fiches[i][0] <= now for i in ids):
+            self.prechauffer(ids)
+        fiches = [self._fiches[i][1] for i in ids if i in self._fiches]
+        return sorted(fiches, key=lambda f: f.get("members") or 0, reverse=True)
+
+    def prechauffer(self, ids: list) -> None:
+        """Relit en arrière-plan les fiches absentes ou périmées d'une sélection."""
+        now = time.monotonic()
+        a_lire = [i for i in ids if self._fiches.get(i, (0, None))[0] <= now]
+        if a_lire:
+            threading.Thread(target=self._charger, args=(a_lire,), daemon=True).start()
+
+    def _charger(self, ids: list) -> None:
+        # Deux appels à la fois : au-delà, l'API répond « trop de requêtes »
+        if not self._fiches_verrou.acquire(timeout=30):
+            return
+        try:
+            # Un autre fil vient peut-être de les lire pendant qu'on attendait
+            now = time.monotonic()
+            ids = [i for i in ids if self._fiches.get(i, (0, None))[0] <= now]
+
+            def lire(anime_id):
+                try:
+                    return anime_id, self.get_animes(anime_id).get("data")
+                except APIError:
+                    return anime_id, None
+
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                for anime_id, fiche in pool.map(lire, ids):
+                    if fiche:
+                        self._fiches[anime_id] = (time.monotonic() + self.SELECTION_TTL, fiche)
+        finally:
+            self._fiches_verrou.release()
 
     def get_animepage(self,page: int=1)->list:
         data = self._get(self.url_api, {"page": page})

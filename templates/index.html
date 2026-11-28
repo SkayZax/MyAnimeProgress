@@ -99,7 +99,7 @@
 
 {% set balise = 'h2' if (visiteur or bilan) else 'h1' %}
 <{{ balise }} class="sr-only">{% if classiques %}Les classiques{% elif notes %}Les mieux notés{% else %}Les plus populaires{% endif %}</{{ balise }}>
-<p class="intro accueil__intro">{% if classiques %}Les grands anciens : les animés sortis avant 2010 les plus suivis.{% elif notes %}Le classement par note des membres de MyAnimeList{% if current_page > 1 %}, page {{ current_page }}{% endif %}.{% else %}Les animés les plus suivis sur MyAnimeList{% if current_page > 1 %}, page {{ current_page }}{% endif %}.{% endif %}</p>
+<p class="intro accueil__intro">{% if classiques %}Les incontournables de l'animation japonaise, du plus suivi au moins suivi.{% elif notes %}Le classement par note des membres de MyAnimeList{% if current_page > 1 %}, page {{ current_page }}{% endif %}.{% else %}Les animés les plus suivis sur MyAnimeList{% if current_page > 1 %}, page {{ current_page }}{% endif %}.{% endif %}</p>
 
 {% if masques %}
 <p class="intro masques">{% if masques == 1 %}1 animé 18+ est masqué{% else %}{{ masques }} animés 18+ sont masqués{% endif %} sur cette page. <a href="{{ url_for('age_gate', next=request.full_path) }}">Les afficher</a></p>

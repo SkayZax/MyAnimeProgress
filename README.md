@@ -149,6 +149,8 @@ Les infos des animés suivis sont gardées en base. La page Progression n'appell
 MyAnimeProgress/
 ├── app.py              Routes, modèles et migrations
 ├── securite.py         Limite d'essais et mots de passe refusés
+├── classiques.py       Animés de l'onglet Classiques, choisis à la main
+├── nouveautes.py       Notes de mise à jour de la pop-up Nouveautés
 ├── api/
 │   └── API.py          Client de l'API Tenrai
 ├── templates/          Pages (Jinja), bâties sur base.html
